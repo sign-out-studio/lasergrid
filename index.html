@@ -1,0 +1,117 @@
+            <div class="help-section">
+              <h3>Trail:</h3>
+              <ul class="help-list trail-legend">
+                <li><span class="trail-emoji">⚡</span> Placed laser</li>
+                <li><span class="trail-emoji">↩️</span> Removed laser</li>
+                <li><span class="trail-emoji">✅</span> Improved board</li>
+                <li><span class="trail-emoji">💥</span> Overloaded core</li>
+                <li><span class="trail-emoji">🏆</span> Solved puzzle</li>
+              </ul>
+            </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaserGrid</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="main-header">
+      <div class="header-row">
+        <h1>LaserGrid</h1>
+        <button id="help-btn" class="help-btn" title="How to Play">?</button>
+      </div>
+      <p class="subtitle" id="puzzle-title">Solve with exactly 2 lasers</p>
+    </header>
+    <div class="status-row">
+      <span id="puzzle-number">Puzzle #1</span>
+      <span id="laser-count" class="laser-count">Lasers: 0 / 2</span>
+    </div>
+    <div class="status-row">
+      <span id="toggle-count">Toggles: 0</span>
+      <span id="timer">00:00</span>
+    </div>
+    <div id="board" class="board"></div>
+    <div class="live-trail" aria-live="polite">
+      <span class="live-trail-label">Trail:</span>
+      <span id="live-trail-emojis" class="live-trail-emojis"></span>
+    </div>
+    <div class="puzzle-controls">
+      <select id="puzzle-select" class="puzzle-select"></select>
+      <button id="next-puzzle-btn" class="next-puzzle-btn">Next Puzzle ▶</button>
+      <button id="reset-btn" class="reset-btn">Reset</button>
+    </div>
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal-overlay" style="display:none;">
+      <div class="modal help-modal">
+        <h2>How to Play</h2>
+        <div class="modal-details">
+              <div class="help-section">
+                <h3>Goal:</h3>
+                <p>Turn every numbered core green using exactly the required lasers.</p>
+              </div>
+
+              <div class="help-section">
+                <h3>Rules:</h3>
+                <ul class="help-rules">
+                  <li>Place lasers on empty squares.</li>
+                  <li>A laser powers every numbered core in its row and column.</li>
+                  <li>Each core needs exactly its number of beams.</li>
+                </ul>
+              </div>
+
+              <div class="help-section">
+                <h3>Core Colors:</h3>
+                <ul class="help-list">
+                  <li><span class="help-dot help-dot-gray"></span> Needs more</li>
+                  <li><span class="help-dot help-dot-green"></span> Perfect</li>
+                  <li><span class="help-dot help-dot-red"></span> Overloaded</li>
+                </ul>
+              </div>
+
+              <div class="help-section">
+                <h3>Score:</h3>
+                <p>Fewer toggles = better score. Every laser placed or removed counts.</p>
+              </div>
+        </div>
+        <button id="close-help-btn" class="close-modal-btn">Close</button>
+      </div>
+    </div>
+
+    <!-- Victory Modal -->
+    <div id="victory-modal" class="modal-overlay" style="display:none;">
+      <div class="modal">
+        <h2>Congratulations!</h2>
+        <div class="modal-details">
+          <div id="modal-puzzle"></div>
+          <div id="modal-size"></div>
+          <div id="modal-lasers"></div>
+          <div id="modal-time"></div>
+          <div id="modal-toggles"></div>
+          <div id="modal-rank"></div>
+          <div id="modal-challenge" class="modal-challenge"></div>
+          <div id="modal-emoji-timeline" class="emoji-timeline"></div>
+        </div>
+        <button id="share-btn" class="share-btn">Copy Text</button>
+        <button id="download-image-btn" class="share-btn">Download Image</button>
+        <button id="close-modal-btn" class="close-modal-btn">Close</button>
+        <div id="share-confirm" class="share-confirm" style="display:none;">Copied!</div>
+        <!-- Share Fallback Modal -->
+        <div id="share-fallback-modal" class="modal-overlay" style="display:none;">
+          <div class="modal share-fallback-modal">
+            <h2>Share Result</h2>
+            <div class="modal-details">
+              <textarea id="share-fallback-text" readonly style="width:98%;min-height:90px;font-size:1.05rem;margin-bottom:10px;"></textarea>
+              <p style="font-size:0.98rem;color:#a0b0c0;">Copy and share this result manually.</p>
+            </div>
+            <button id="close-share-fallback-btn" class="close-modal-btn">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>
