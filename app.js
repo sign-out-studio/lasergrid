@@ -53,6 +53,30 @@ const PUZZLES = [
   },
 ];
 
+// --- M12D: Challenge Phrase Bank ---
+const CHALLENGE_PHRASES = {
+  Perfect: [
+    'Perfect beam path. Can you find another way in exactly {target} toggles?',
+    'Solved with no wasted moves. Can you match {target} toggles?',
+    'Clean. Exact. Perfect. Can you solve it differently in {target} toggles?'
+  ],
+  'Clean Solve': [
+    'Clean solve. Can you make it perfect in exactly {target} toggles?',
+    'Close to perfect. Can you solve it in exactly {target} toggles?',
+    'Nice path. But can you finish with no wasted moves: {target} toggles?'
+  ],
+  'Scrappy Solve': [
+    'I got there eventually. Can you solve it in exactly {target} toggles?',
+    'Messy, but solved. Can you find the perfect {target}-toggle path?',
+    'That took some experimenting. Can you solve it cleaner in {target} toggles?'
+  ],
+  'Laser Chaos': [
+    'My grid was chaos. Can you solve it in exactly {target} toggles?',
+    'Laser chaos, but I survived. Can you find the perfect {target}-toggle solve?',
+    'I brute-forced the beams. Can you solve it cleanly in {target} toggles?'
+  ]
+};
+
 // --- Local Storage Key (M9) ---
 const STORAGE_KEY = 'lasergrid_mvp_save_data';
 
@@ -67,6 +91,7 @@ let timerStarted = false;
 let win = false;
 let emojiTimeline = [];
 let lastPerfectCores = 0;
+let selectedChallengePhrase = '';
 
 // --- Analytics (M18) ---
 let firstMoveTracked = false;
@@ -141,6 +166,7 @@ function resetGame(clearSave = true) {
   emojiTimeline = [];
   lastPerfectCores = 0;
   firstMoveTracked = false;
+  selectedChallengePhrase = '';
   stopTimer();
   updateLaserCount();
   updateToggleCount();
@@ -279,6 +305,7 @@ function switchPuzzle(idx) {
   if (idx < 0 || idx >= PUZZLES.length) return;
   currentPuzzleIndex = idx;
   puzzle = { ...PUZZLES[currentPuzzleIndex] };
+  selectedChallengePhrase = '';
   document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
   document.getElementById('puzzle-title').textContent = puzzle.title;
   resetGame(false);
@@ -305,6 +332,7 @@ function saveGameState() {
       timerStarted,
       win,
       emojiTimeline,
+      selectedChallengePhrase
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {}
@@ -324,6 +352,9 @@ function loadGameState() {
       win = !!data.win;
       emojiTimeline = Array.isArray(data.emojiTimeline) ? data.emojiTimeline : [];
       lastPerfectCores = countPerfectCores();
+      selectedChallengePhrase = typeof data.selectedChallengePhrase === 'string'
+        ? data.selectedChallengePhrase
+        : '';
       document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
       document.getElementById('puzzle-title').textContent = puzzle.title;
       populatePuzzleSelect();
@@ -450,12 +481,15 @@ function recordMoveEmoji(moveType, beforePerfect, afterPerfect, afterOverload) {
   return '⚡';
 }
 
-// --- Share Logic ---
-function getChallengePhrase(rank) {
-  if (rank === 'Perfect') return 'I found the perfect beam path.';
-  if (rank === 'Clean Solve') return 'Can you solve it cleaner?';
-  if (rank === 'Scrappy Solve') return 'I got there eventually. Can you beat me?';
-  return 'My grid was chaos. Your turn.';
+// --- Share Logic (M12D) ---
+function getChallengePhrase(rank, target) {
+  if (selectedChallengePhrase) return selectedChallengePhrase;
+
+  const phrases = CHALLENGE_PHRASES[rank] || CHALLENGE_PHRASES['Laser Chaos'];
+  const chosen = phrases[Math.floor(Math.random() * phrases.length)];
+
+  selectedChallengePhrase = chosen.replaceAll('{target}', String(target));
+  return selectedChallengePhrase;
 }
 
 function getResultData() {
@@ -468,7 +502,7 @@ function getResultData() {
     time: formatTime(timer),
     rank,
     timeline: emojiTimeline.join(' '),
-    challengePhrase: getChallengePhrase(rank),
+    challengePhrase: getChallengePhrase(rank, puzzle.requiredLasers),
     url: window.location.href || '[URL]'
   };
 }
