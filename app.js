@@ -68,6 +68,27 @@ let win = false;
 let emojiTimeline = [];
 let lastPerfectCores = 0;
 
+// --- Analytics (M18) ---
+let firstMoveTracked = false;
+
+function trackEvent(eventName, params = {}) {
+  if (typeof gtag !== 'function') return;
+  try {
+    gtag('event', eventName, params);
+  } catch (e) {
+    // Analytics should never break gameplay.
+  }
+}
+
+function getAnalyticsPuzzleParams() {
+  return {
+    puzzle_id: puzzle.id,
+    puzzle_title: puzzle.title,
+    grid_size: `${puzzle.gridSize}x${puzzle.gridSize}`,
+    required_lasers: puzzle.requiredLasers
+  };
+}
+
 // --- Utility Functions ---
 function getCurrentPuzzle() {
   return PUZZLES[currentPuzzleIndex];
@@ -119,6 +140,7 @@ function resetGame(clearSave = true) {
   win = false;
   emojiTimeline = [];
   lastPerfectCores = 0;
+  firstMoveTracked = false;
   stopTimer();
   updateLaserCount();
   updateToggleCount();
@@ -153,6 +175,11 @@ function toggleLaser(row, col) {
     timerStarted = true;
   }
   toggles++;
+  // --- Analytics: first_move ---
+  if (!firstMoveTracked) {
+    trackEvent('first_move', getAnalyticsPuzzleParams());
+    firstMoveTracked = true;
+  }
   // After move, check for overloads and perfects
   const afterPerfect = countPerfectCores();
   afterOverload = isAnyCoreOverloaded();
@@ -255,9 +282,12 @@ function switchPuzzle(idx) {
   document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
   document.getElementById('puzzle-title').textContent = puzzle.title;
   resetGame(false);
+  firstMoveTracked = false;
   updateLiveTrail();
   saveGameState();
   populatePuzzleSelect();
+  // --- Analytics: puzzle_changed ---
+  trackEvent('puzzle_changed', getAnalyticsPuzzleParams());
 }
 
 function nextPuzzle() {
@@ -361,6 +391,14 @@ function checkWin() {
     updateLaserCount();
     updateToggleCount();
     updateTimer();
+    // --- Analytics: puzzle_solved ---
+    const rank = getRank();
+    trackEvent('puzzle_solved', {
+      ...getAnalyticsPuzzleParams(),
+      toggles,
+      time_seconds: timer,
+      rank
+    });
     showVictoryModal();
   }
 }
@@ -442,6 +480,12 @@ function generateShareText() {
 
 function copyShareText() {
   const text = generateShareText();
+  // --- Analytics: copy_result_clicked ---
+  trackEvent('copy_result_clicked', {
+    puzzle_id: puzzle.id,
+    rank: getRank(),
+    toggles
+  });
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => {
       showShareConfirm();
@@ -497,6 +541,11 @@ function initGame() {
   const closeHelpBtn = document.getElementById('close-help-btn');
   helpBtn.addEventListener('click', () => {
     helpModal.style.display = 'flex';
+    // --- Analytics: help_opened ---
+    trackEvent('help_opened', {
+      puzzle_id: puzzle.id,
+      puzzle_title: puzzle.title
+    });
   });
   closeHelpBtn.addEventListener('click', () => {
     helpModal.style.display = 'none';
@@ -512,7 +561,14 @@ function initGame() {
   });
   document.getElementById('next-puzzle-btn').addEventListener('click', nextPuzzle);
 
-  document.getElementById('reset-btn').addEventListener('click', () => resetGame(true));
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    trackEvent('reset_clicked', {
+      puzzle_id: puzzle.id,
+      puzzle_title: puzzle.title,
+      grid_size: `${puzzle.gridSize}x${puzzle.gridSize}`
+    });
+    resetGame(true);
+  });
   document.getElementById('close-modal-btn').addEventListener('click', hideVictoryModal);
   document.getElementById('share-btn').addEventListener('click', copyShareText);
 
@@ -530,11 +586,23 @@ function initGame() {
     resetGame(false);
   }
   updateLiveTrail(); // Ensure trail is initialized
+  // --- Analytics: game_loaded ---
+  trackEvent('game_loaded', {
+    puzzle_id: puzzle.id,
+    puzzle_title: puzzle.title,
+    grid_size: `${puzzle.gridSize}x${puzzle.gridSize}`
+  });
 }
 
 document.addEventListener('DOMContentLoaded', initGame);
 
 function downloadVictoryImage() {
+  // --- Analytics: share_result_clicked ---
+  trackEvent('share_result_clicked', {
+    puzzle_id: puzzle.id,
+    rank: getRank(),
+    toggles
+  });
   try {
     const result = getResultData();
 
