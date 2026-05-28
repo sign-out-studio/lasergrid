@@ -57,7 +57,7 @@ const PUZZLES = [
 const CHALLENGE_PHRASES = {
   Perfect: [
     'Perfect beam path. Can you find another way in exactly {target} toggles?',
-    'Solved with no wasted moves. Can you find another way in exactly {target} toggles?',
+    'Solved with no wasted moves. Can you match {target} toggles?',
     'Clean. Exact. Perfect. Can you solve it differently in {target} toggles?'
   ],
   'Clean Solve': [
@@ -368,9 +368,6 @@ function loadGameState() {
       win = !!data.win;
       emojiTimeline = Array.isArray(data.emojiTimeline) ? data.emojiTimeline : [];
       lastPerfectCores = countPerfectCores();
-      selectedChallengePhrase = typeof data.selectedChallengePhrase === 'string'
-        ? data.selectedChallengePhrase
-        : '';
       selectedChallengePhraseRank = typeof data.selectedChallengePhraseRank === 'string'
         ? data.selectedChallengePhraseRank
         : '';
@@ -652,6 +649,10 @@ function initGame() {
     resetGame(true);
   });
   document.getElementById('close-modal-btn').addEventListener('click', hideVictoryModal);
+  const shareResultBtn = document.getElementById('share-result-btn');
+  if (shareResultBtn) {
+    shareResultBtn.addEventListener('click', shareResult);
+  }
   document.getElementById('share-btn').addEventListener('click', copyShareText);
 
   document.getElementById('download-image-btn').addEventListener('click', downloadVictoryImage);
@@ -678,6 +679,75 @@ function initGame() {
 
 document.addEventListener('DOMContentLoaded', initGame);
 
+function createVictoryImageCanvas() {
+  const result = getResultData();
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#10131a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Modal-like card
+  const cardX = 90;
+  const cardY = 110;
+  const cardW = 900;
+  const cardH = 1130;
+  const radius = 42;
+
+  ctx.fillStyle = '#181c24';
+  roundRect(ctx, cardX, cardY, cardW, cardH, radius);
+  ctx.fill();
+
+  // Title
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#7eeaff';
+  ctx.font = 'bold 72px Arial, sans-serif';
+  ctx.fillText('Congratulations!', canvas.width / 2, 230);
+
+  // Result details
+  ctx.fillStyle = '#e0e6ed';
+  ctx.font = '48px Arial, sans-serif';
+
+  let y = 340;
+  const centerX = canvas.width / 2;
+  const lineGap = 66;
+
+  ctx.fillText(`Puzzle #${result.puzzleId}`, centerX, y); y += lineGap;
+  ctx.fillText(result.gridSize, centerX, y); y += lineGap;
+  ctx.fillText(`Lasers: ${result.requiredLasers}`, centerX, y); y += lineGap;
+  ctx.fillText(`Time: ${result.time}`, centerX, y); y += lineGap;
+  ctx.fillText(`Toggles: ${result.toggles}`, centerX, y); y += lineGap;
+  ctx.fillText(`Rank: ${result.rank}`, centerX, y); y += 88;
+
+  // Challenge phrase
+  ctx.fillStyle = '#ffe066';
+  ctx.font = 'bold 44px Arial, sans-serif';
+  y = wrapCanvasText(ctx, result.challengePhrase, centerX, y, 820, 56, true);
+  y += 50;
+
+  // Emoji timeline
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '48px Arial, sans-serif';
+  y = wrapCanvasText(ctx, result.timeline, centerX, y, 820, 64, true);
+  y += 70;
+
+  // Game link
+  ctx.fillStyle = '#7eeaff';
+  ctx.font = '30px Arial, sans-serif';
+  ctx.fillText('Play LaserGrid:', centerX, y);
+  y += 44;
+
+  ctx.fillStyle = '#e0e6ed';
+  ctx.font = '28px Arial, sans-serif';
+  wrapCanvasText(ctx, result.url, centerX, y, 820, 38, true);
+
+  return canvas;
+}
+
 function downloadVictoryImage() {
   // --- Analytics: share_result_clicked ---
   trackEvent('share_result_clicked', {
@@ -685,73 +755,10 @@ function downloadVictoryImage() {
     rank: getRank(),
     toggles
   });
+
   try {
     const result = getResultData();
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 1080;
-    canvas.height = 1350;
-    const ctx = canvas.getContext('2d');
-
-    // Background
-    ctx.fillStyle = '#10131a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Modal-like card
-    const cardX = 90;
-    const cardY = 110;
-    const cardW = 900;
-    const cardH = 1130;
-    const radius = 42;
-
-    ctx.fillStyle = '#181c24';
-    roundRect(ctx, cardX, cardY, cardW, cardH, radius);
-    ctx.fill();
-
-    // Title
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#7eeaff';
-    ctx.font = 'bold 72px Arial, sans-serif';
-    ctx.fillText('Congratulations!', canvas.width / 2, 230);
-
-    // Result details
-    ctx.fillStyle = '#e0e6ed';
-    ctx.font = '48px Arial, sans-serif';
-
-    let y = 340;
-    const centerX = canvas.width / 2;
-    const lineGap = 66;
-
-    ctx.fillText(`Puzzle #${result.puzzleId}`, centerX, y); y += lineGap;
-    ctx.fillText(result.gridSize, centerX, y); y += lineGap;
-    ctx.fillText(`Lasers: ${result.requiredLasers}`, centerX, y); y += lineGap;
-    ctx.fillText(`Time: ${result.time}`, centerX, y); y += lineGap;
-    ctx.fillText(`Toggles: ${result.toggles}`, centerX, y); y += lineGap;
-    ctx.fillText(`Rank: ${result.rank}`, centerX, y); y += 88;
-
-    // Challenge phrase
-    ctx.fillStyle = '#ffe066';
-    ctx.font = 'bold 44px Arial, sans-serif';
-    y = wrapCanvasText(ctx, result.challengePhrase, centerX, y, 820, 56, true);
-    y += 50;
-
-    // Emoji timeline
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '48px Arial, sans-serif';
-    y = wrapCanvasText(ctx, result.timeline, centerX, y, 820, 64, true);
-    y += 70;
-
-    // Game link
-    ctx.fillStyle = '#7eeaff';
-    ctx.font = '30px Arial, sans-serif';
-    ctx.fillText('Play LaserGrid:', centerX, y);
-    y += 44;
-
-    ctx.fillStyle = '#e0e6ed';
-    ctx.font = '28px Arial, sans-serif';
-    wrapCanvasText(ctx, result.url, centerX, y, 820, 38, true);
-
-    // Download
+    const canvas = createVictoryImageCanvas();
     const link = document.createElement('a');
     link.download = `lasergrid-result-puzzle-${result.puzzleId}.png`;
     link.href = canvas.toDataURL('image/png');
@@ -760,7 +767,74 @@ function downloadVictoryImage() {
     document.body.removeChild(link);
   } catch (err) {
     console.error('Image download failed:', err);
-    alert('Image download failed. Please use Copy Text for now.');
+    alert('Image download failed. Please use Copy Result for now.');
+  }
+}
+
+async function createVictoryImageFile() {
+  const result = getResultData();
+  const canvas = createVictoryImageCanvas();
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((generatedBlob) => {
+      if (generatedBlob) {
+        resolve(generatedBlob);
+      } else {
+        reject(new Error('Could not create result image.'));
+      }
+    }, 'image/png');
+  });
+
+  return new File(
+    [blob],
+    `lasergrid-result-puzzle-${result.puzzleId}.png`,
+    { type: 'image/png' }
+  );
+}
+
+async function shareResult() {
+  // --- Analytics: share_result_clicked ---
+  trackEvent('share_result_clicked', {
+    puzzle_id: puzzle.id,
+    rank: getRank(),
+    toggles
+  });
+
+  const result = getResultData();
+  const text = `I solved LaserGrid #${result.puzzleId} in ${result.toggles} toggles. ${result.challengePhrase}`;
+  const shareData = {
+    title: 'LaserGrid Result',
+    text,
+    url: result.url
+  };
+
+  if (!navigator.share) {
+    showShareFallback(generateShareText());
+    return;
+  }
+
+  try {
+    const file = await createVictoryImageFile();
+    const fileShareData = {
+      ...shareData,
+      files: [file]
+    };
+
+    if (!navigator.canShare || navigator.canShare(fileShareData)) {
+      await navigator.share(fileShareData);
+      return;
+    }
+  } catch (err) {
+    // If the image/file path fails, fall back to text + URL share below.
+    // User cancellation is handled by the outer share fallback as a no-op.
+  }
+
+  try {
+    await navigator.share(shareData);
+  } catch (err) {
+    // AbortError usually means the user dismissed the native share sheet.
+    if (err && err.name === 'AbortError') return;
+    showShareFallback(generateShareText());
   }
 }
 
