@@ -57,7 +57,7 @@ const PUZZLES = [
 const CHALLENGE_PHRASES = {
   Perfect: [
     'Perfect beam path. Can you find another way in exactly {target} toggles?',
-    'Solved with no wasted moves. Can you match {target} toggles?',
+    'Solved with no wasted moves. Can you find another way in exactly {target} toggles?',
     'Clean. Exact. Perfect. Can you solve it differently in {target} toggles?'
   ],
   'Clean Solve': [
