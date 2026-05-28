@@ -726,3 +726,94 @@ body.win-flash::before {
   20% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* --- M12F: Mobile Modal & Help Layout Polish (final, explicit overrides) --- */
+@media (max-width: 600px) {
+  .modal-overlay {
+    box-sizing: border-box;
+    padding: max(16px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
+    min-height: 100dvh;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+  }
+
+  .modal {
+    width: min(94vw, 520px);
+    max-width: 94vw;
+    max-height: calc(100dvh - 34px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    margin: 0 auto;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 18px 14px 14px;
+  }
+
+  .help-modal {
+    text-align: left;
+    padding: 14px 16px 12px;
+  }
+
+  .help-modal h2 {
+    text-align: center;
+    font-size: clamp(1.65rem, 7vw, 2.2rem);
+    line-height: 1.1;
+    margin: 0 0 12px;
+    padding-top: 2px;
+  }
+
+  .help-section {
+    width: 100%;
+    margin: 10px 0 12px;
+  }
+
+  .help-section h3 {
+    text-align: left;
+    font-size: 1.05rem;
+    line-height: 1.2;
+    margin: 0 0 6px;
+  }
+
+  .help-section p,
+  .help-rules li,
+  .help-list li {
+    font-size: 1rem;
+    line-height: 1.32;
+  }
+
+  .help-section p {
+    margin: 0;
+  }
+
+  .help-rules {
+    margin: 0;
+    padding-left: 1.1rem;
+  }
+
+  .help-rules li {
+    margin-bottom: 6px;
+    padding-left: 0.2rem;
+  }
+
+  .help-list {
+    margin: 6px 0;
+    padding: 0;
+  }
+
+  .help-list li,
+  .trail-legend li {
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+
+  .help-modal .close-modal-btn {
+    position: sticky;
+    bottom: 0;
+    display: block;
+    width: min(220px, 70%);
+    margin: 12px auto 0;
+    z-index: 3;
+    border-radius: 10px;
+    background: #232a36;
+    box-shadow: 0 -2px 12px #10131a88;
+  }
+}
