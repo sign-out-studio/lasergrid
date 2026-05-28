@@ -92,6 +92,10 @@ let win = false;
 let emojiTimeline = [];
 let lastPerfectCores = 0;
 let selectedChallengePhrase = '';
+let selectedChallengePhraseRank = '';
+let selectedChallengePhraseTarget = '';
+let celebratingWin = false;
+let celebrationTimeoutId = null;
 
 // --- Analytics (M18) ---
 let firstMoveTracked = false;
@@ -167,6 +171,14 @@ function resetGame(clearSave = true) {
   lastPerfectCores = 0;
   firstMoveTracked = false;
   selectedChallengePhrase = '';
+  selectedChallengePhraseRank = '';
+  selectedChallengePhraseTarget = '';
+  celebratingWin = false;
+  if (celebrationTimeoutId) {
+    clearTimeout(celebrationTimeoutId);
+    celebrationTimeoutId = null;
+  }
+  hideCelebration();
   stopTimer();
   updateLaserCount();
   updateToggleCount();
@@ -181,7 +193,7 @@ function resetGame(clearSave = true) {
 
 
 function toggleLaser(row, col) {
-  if (win) return; // No toggles after win
+  if (win || celebratingWin) return; // No toggles after win or during celebration
   if (isCoreCell(row, col)) return; // Can't place on core
   const idx = lasers.findIndex(l => l.row === row && l.col === col);
   // Save state for emoji logic
@@ -306,6 +318,8 @@ function switchPuzzle(idx) {
   currentPuzzleIndex = idx;
   puzzle = { ...PUZZLES[currentPuzzleIndex] };
   selectedChallengePhrase = '';
+  selectedChallengePhraseRank = '';
+  selectedChallengePhraseTarget = '';
   document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
   document.getElementById('puzzle-title').textContent = puzzle.title;
   resetGame(false);
@@ -332,7 +346,9 @@ function saveGameState() {
       timerStarted,
       win,
       emojiTimeline,
-      selectedChallengePhrase
+      selectedChallengePhrase,
+      selectedChallengePhraseRank,
+      selectedChallengePhraseTarget
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {}
@@ -355,6 +371,18 @@ function loadGameState() {
       selectedChallengePhrase = typeof data.selectedChallengePhrase === 'string'
         ? data.selectedChallengePhrase
         : '';
+      selectedChallengePhraseRank = typeof data.selectedChallengePhraseRank === 'string'
+        ? data.selectedChallengePhraseRank
+        : '';
+      selectedChallengePhraseTarget = typeof data.selectedChallengePhraseTarget === 'string'
+        ? data.selectedChallengePhraseTarget
+        : '';
+      selectedChallengePhrase =
+        typeof data.selectedChallengePhrase === 'string' &&
+        selectedChallengePhraseRank &&
+        selectedChallengePhraseTarget
+          ? data.selectedChallengePhrase
+          : '';
       document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
       document.getElementById('puzzle-title').textContent = puzzle.title;
       populatePuzzleSelect();
@@ -412,6 +440,7 @@ function checkWin() {
   if (win) return;
   if (isSolved()) {
     win = true;
+    celebratingWin = true;
     stopTimer();
     // Ensure final move is marked as winning move (replace last emoji)
     if (emojiTimeline.length > 0) {
@@ -430,7 +459,15 @@ function checkWin() {
       time_seconds: timer,
       rank
     });
-    showVictoryModal();
+    showCelebration();
+    celebrationTimeoutId = setTimeout(() => {
+      celebrationTimeoutId = null;
+      celebratingWin = false;
+      hideCelebration();
+      showVictoryModal();
+      saveGameState();
+    }, 3000);
+    return;
   }
 }
 
@@ -483,12 +520,23 @@ function recordMoveEmoji(moveType, beforePerfect, afterPerfect, afterOverload) {
 
 // --- Share Logic (M12D) ---
 function getChallengePhrase(rank, target) {
-  if (selectedChallengePhrase) return selectedChallengePhrase;
+  const targetText = String(target);
+
+  if (
+    selectedChallengePhrase &&
+    selectedChallengePhraseRank === rank &&
+    selectedChallengePhraseTarget === targetText
+  ) {
+    return selectedChallengePhrase;
+  }
 
   const phrases = CHALLENGE_PHRASES[rank] || CHALLENGE_PHRASES['Laser Chaos'];
   const chosen = phrases[Math.floor(Math.random() * phrases.length)];
 
-  selectedChallengePhrase = chosen.replaceAll('{target}', String(target));
+  selectedChallengePhrase = chosen.replaceAll('{target}', targetText);
+  selectedChallengePhraseRank = rank;
+  selectedChallengePhraseTarget = targetText;
+
   return selectedChallengePhrase;
 }
 
@@ -754,4 +802,27 @@ function roundRect(ctx, x, y, width, height, radius) {
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
   ctx.closePath();
+}
+
+// --- M13B: Victory Celebration Overlay ---
+function showCelebration() {
+  document.body.classList.add('win-flash');
+  const board = document.getElementById('board');
+  if (board) board.classList.add('celebrating-win');
+  const overlay = document.getElementById('win-celebration');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    overlay.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function hideCelebration() {
+  document.body.classList.remove('win-flash');
+  const board = document.getElementById('board');
+  if (board) board.classList.remove('celebrating-win');
+  const overlay = document.getElementById('win-celebration');
+  if (overlay) {
+    overlay.style.display = 'none';
+    overlay.setAttribute('aria-hidden', 'true');
+  }
 }
