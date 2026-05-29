@@ -290,8 +290,34 @@ const CHALLENGE_PHRASES = {
 const STORAGE_KEY = 'lasergrid_mvp_save_data';
 
 // --- Game State (M4–M10) ---
+let currentMode = 'practice'; // M16C: 'practice' or 'daily'
 let currentPuzzleIndex = 0;
 let puzzle = { ...PUZZLES[0] };
+// --- M16C: Daily Mode State + Safe Fallback ---
+function getPuzzleIndexById(puzzleId) {
+  return PUZZLES.findIndex(p => p.id === puzzleId);
+}
+
+function getStartupPuzzleIndex() {
+  const dailyPuzzle = getDailyPuzzleForDate();
+  if (dailyPuzzle) {
+    const dailyIndex = getPuzzleIndexById(dailyPuzzle.id);
+    if (dailyIndex >= 0) {
+      currentMode = 'daily';
+      return dailyIndex;
+    }
+  }
+  currentMode = 'practice';
+  return 0;
+}
+
+function isDailyMode() {
+  return currentMode === 'daily';
+}
+
+function getCurrentModeLabel() {
+  return isDailyMode() ? 'Daily Puzzle' : 'Practice Puzzle';
+}
 let lasers = [];
 let toggles = 0;
 let timer = 0; // seconds
@@ -526,6 +552,7 @@ function switchPuzzle(idx) {
   if (idx < 0 || idx >= PUZZLES.length) return;
   currentPuzzleIndex = idx;
   puzzle = { ...PUZZLES[currentPuzzleIndex] };
+  currentMode = 'practice'; // M16C: manual selector means practice mode
   selectedChallengePhrase = '';
   updatePuzzleHeader();
   resetGame(false);
@@ -552,7 +579,8 @@ function saveGameState() {
       timerStarted,
       win,
       emojiTimeline,
-      selectedChallengePhrase
+      selectedChallengePhrase,
+      currentMode // M16C: save mode
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {}
@@ -575,6 +603,12 @@ function loadGameState() {
       selectedChallengePhrase = typeof data.selectedChallengePhrase === 'string'
         ? data.selectedChallengePhrase
         : '';
+      // M16C: restore currentMode if valid, else default to 'practice'
+      if (data.currentMode === 'practice' || data.currentMode === 'daily') {
+        currentMode = data.currentMode;
+      } else {
+        currentMode = 'practice';
+      }
       updatePuzzleHeader();
       populatePuzzleSelect();
       renderBoard();
@@ -764,7 +798,13 @@ function getResultData() {
     rank,
     timeline: emojiTimeline.join(' '),
     challengePhrase: getChallengePhrase(rank, puzzle.requiredLasers),
-    url: window.location.href || '[URL]'
+    url: window.location.href || '[URL]',
+
+    // M16C: internal mode metadata for future Daily Puzzle support.
+    mode: currentMode,
+    isDaily: isDailyMode(),
+    dailyNumber: puzzle.dailyNumber || null,
+    releaseDate: puzzle.releaseDate || null
   };
 }
 
@@ -876,9 +916,9 @@ function initGame() {
   // Initial load
   loadGameState();
   if (!localStorage.getItem(STORAGE_KEY)) {
-    // If no save, show first puzzle
-    puzzle = { ...PUZZLES[0] };
-    currentPuzzleIndex = 0;
+    // If no save, use daily/practice startup logic
+    currentPuzzleIndex = getStartupPuzzleIndex();
+    puzzle = { ...PUZZLES[currentPuzzleIndex] };
     updatePuzzleHeader();
     populatePuzzleSelect();
     resetGame(false);
