@@ -3,6 +3,8 @@
 
 
 // --- Puzzle Pack (M8) ---
+// --- M16B: Daily Puzzle Data Model ---
+// Added mode, dailyNumber, releaseDate to each puzzle for future Daily Puzzle support.
 const PUZZLES = [
   // Easy
   {
@@ -12,6 +14,9 @@ const PUZZLES = [
     requiredLasers: 2,
     difficulty: 'Easy',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 1, value: 2 },
       { row: 1, col: 3, value: 1 },
@@ -25,6 +30,9 @@ const PUZZLES = [
     requiredLasers: 3,
     difficulty: 'Easy',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 2, value: 2 },
       { row: 1, col: 1, value: 2 },
@@ -39,6 +47,9 @@ const PUZZLES = [
     requiredLasers: 2,
     difficulty: 'Easy',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 1, col: 1, value: 2 },
       { row: 2, col: 2, value: 2 },
@@ -51,6 +62,9 @@ const PUZZLES = [
     requiredLasers: 3,
     difficulty: 'Medium',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 0, value: 1 },
       { row: 0, col: 3, value: 2 },
@@ -64,6 +78,9 @@ const PUZZLES = [
     requiredLasers: 4,
     difficulty: 'Medium',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 1, col: 1, value: 2 },
       { row: 1, col: 2, value: 2 },
@@ -78,6 +95,9 @@ const PUZZLES = [
     requiredLasers: 3,
     difficulty: 'Medium',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 2, value: 1 },
       { row: 2, col: 1, value: 2 },
@@ -92,6 +112,9 @@ const PUZZLES = [
     requiredLasers: 3,
     difficulty: 'Medium',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 0, value: 1 },
       { row: 1, col: 1, value: 2 },
@@ -106,6 +129,9 @@ const PUZZLES = [
     requiredLasers: 3,
     difficulty: 'Medium',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 1, value: 1 },
       { row: 3, col: 2, value: 2 },
@@ -122,6 +148,9 @@ const PUZZLES = [
     requiredLasers: 4,
     difficulty: 'Hard',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 2, value: 2 },
       { row: 1, col: 3, value: 3 },
@@ -137,6 +166,9 @@ const PUZZLES = [
     requiredLasers: 4,
     difficulty: 'Hard',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 0, value: 2 },
       { row: 0, col: 2, value: 2 },
@@ -152,6 +184,9 @@ const PUZZLES = [
     requiredLasers: 4,
     difficulty: 'Hard',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 1, col: 0, value: 1 },
       { row: 1, col: 3, value: 1 },
@@ -167,6 +202,9 @@ const PUZZLES = [
     requiredLasers: 5,
     difficulty: 'Hard',
     pack: 'starter',
+    mode: 'practice',
+    dailyNumber: null,
+    releaseDate: null,
     cores: [
       { row: 0, col: 0, value: 2 },
       { row: 0, col: 2, value: 2 },
@@ -176,6 +214,53 @@ const PUZZLES = [
     ],
   },
 ];
+
+// --- M16B: Daily Puzzle Helpers ---
+// These helpers prepare for future Daily Puzzle mode.
+function getTodayDateKey(date = new Date()) {
+  // return local date as YYYY-MM-DD
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return d.toISOString().slice(0, 10);
+}
+
+function getDailyPuzzles() {
+  // return PUZZLES where mode === 'daily' and releaseDate exists
+  return PUZZLES.filter(p => p.mode === 'daily' && !!p.releaseDate);
+}
+
+function getPracticePuzzles() {
+  // return PUZZLES where mode !== 'daily'
+  return PUZZLES.filter(p => p.mode !== 'daily');
+}
+
+function getDailyPuzzleForDate(date = new Date()) {
+  // Use local browser date.
+  // Find exact releaseDate match among daily puzzles.
+  // If no exact match, return latest available daily puzzle with releaseDate <= today.
+  // If there are no daily puzzles at all, return null.
+  const key = getTodayDateKey(date);
+  const daily = getDailyPuzzles();
+  if (daily.length === 0) return null;
+  const exact = daily.find(p => p.releaseDate === key);
+  if (exact) return exact;
+  return getLatestAvailableDailyPuzzle(date);
+}
+
+function getLatestAvailableDailyPuzzle(date = new Date()) {
+  // Helper used by getDailyPuzzleForDate.
+  // Return latest daily puzzle with releaseDate <= date key.
+  // If none, return null.
+  const key = getTodayDateKey(date);
+  const daily = getDailyPuzzles();
+  if (daily.length === 0) return null;
+  // Only consider those with releaseDate <= key
+  const available = daily.filter(p => p.releaseDate && p.releaseDate <= key);
+  if (available.length === 0) return null;
+  // Return the one with the latest releaseDate
+  return available.reduce((latest, p) => {
+    return (!latest || p.releaseDate > latest.releaseDate) ? p : latest;
+  }, null);
+}
 
 // --- M12D: Challenge Phrase Bank ---
 const CHALLENGE_PHRASES = {
