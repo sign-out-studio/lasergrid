@@ -9,18 +9,21 @@ const PUZZLES = [
     title: 'Tutorial Grid',
     gridSize: 4,
     requiredLasers: 2,
+    difficulty: 'Easy',
+    pack: 'starter',
     cores: [
       { row: 0, col: 1, value: 2 },
       { row: 1, col: 3, value: 1 },
       { row: 2, col: 0, value: 1 },
     ],
-    // intendedSolution: [ {row:0,col:0}, {row:1,col:1} ]
   },
   {
     id: 2,
     title: 'Crossfire',
     gridSize: 4,
     requiredLasers: 3,
+    difficulty: 'Easy',
+    pack: 'starter',
     cores: [
       { row: 0, col: 2, value: 2 },
       { row: 1, col: 1, value: 2 },
@@ -33,6 +36,8 @@ const PUZZLES = [
     title: 'Cornered',
     gridSize: 4,
     requiredLasers: 3,
+    difficulty: 'Medium',
+    pack: 'starter',
     cores: [
       { row: 0, col: 0, value: 1 },
       { row: 0, col: 3, value: 2 },
@@ -44,11 +49,125 @@ const PUZZLES = [
     title: 'Double Trouble',
     gridSize: 4,
     requiredLasers: 4,
+    difficulty: 'Medium',
+    pack: 'starter',
     cores: [
       { row: 1, col: 1, value: 2 },
       { row: 1, col: 2, value: 2 },
       { row: 2, col: 1, value: 2 },
       { row: 2, col: 2, value: 2 },
+    ],
+  },
+  {
+    id: 5,
+    title: 'Laser Alley',
+    gridSize: 4,
+    requiredLasers: 2,
+    difficulty: 'Easy',
+    pack: 'starter',
+    cores: [
+      { row: 1, col: 0, value: 1 },
+      { row: 1, col: 2, value: 1 },
+      { row: 2, col: 1, value: 2 },
+    ],
+  },
+  {
+    id: 6,
+    title: 'Diagonal Dance',
+    gridSize: 4,
+    requiredLasers: 3,
+    difficulty: 'Medium',
+    pack: 'starter',
+    cores: [
+      { row: 0, col: 0, value: 1 },
+      { row: 1, col: 1, value: 2 },
+      { row: 2, col: 2, value: 2 },
+      { row: 3, col: 3, value: 1 },
+    ],
+  },
+  {
+    id: 7,
+    title: 'Edge Case',
+    gridSize: 4,
+    requiredLasers: 3,
+    difficulty: 'Medium',
+    pack: 'starter',
+    cores: [
+      { row: 0, col: 1, value: 1 },
+      { row: 3, col: 2, value: 2 },
+      { row: 2, col: 0, value: 1 },
+      { row: 1, col: 3, value: 2 },
+    ],
+  },
+  {
+    id: 8,
+    title: 'Split Decision',
+    gridSize: 4,
+    requiredLasers: 3,
+    difficulty: 'Medium',
+    pack: 'starter',
+    cores: [
+      { row: 0, col: 2, value: 1 },
+      { row: 2, col: 1, value: 2 },
+      { row: 3, col: 0, value: 2 },
+      { row: 1, col: 3, value: 1 },
+    ],
+  },
+  {
+    id: 9,
+    title: 'Core Quartet',
+    gridSize: 4,
+    requiredLasers: 4,
+    difficulty: 'Hard',
+    pack: 'starter',
+    cores: [
+      { row: 0, col: 1, value: 2 },
+      { row: 1, col: 2, value: 2 },
+      { row: 2, col: 3, value: 2 },
+      { row: 3, col: 0, value: 2 },
+    ],
+  },
+  {
+    id: 10,
+    title: 'Laser Maze',
+    gridSize: 4,
+    requiredLasers: 4,
+    difficulty: 'Hard',
+    pack: 'starter',
+    cores: [
+      { row: 0, col: 0, value: 2 },
+      { row: 0, col: 3, value: 2 },
+      { row: 3, col: 0, value: 2 },
+      { row: 3, col: 3, value: 2 },
+    ],
+  },
+  {
+    id: 11,
+    title: 'Tight Corners',
+    gridSize: 4,
+    requiredLasers: 4,
+    difficulty: 'Hard',
+    pack: 'starter',
+    cores: [
+      { row: 0, col: 1, value: 2 },
+      { row: 1, col: 2, value: 2 },
+      { row: 2, col: 1, value: 2 },
+      { row: 3, col: 2, value: 2 },
+    ],
+  },
+  {
+    id: 12,
+    title: 'The Gauntlet',
+    gridSize: 4,
+    requiredLasers: 5,
+    difficulty: 'Hard',
+    pack: 'starter',
+    cores: [
+      { row: 0, col: 0, value: 2 },
+      { row: 0, col: 2, value: 2 },
+      { row: 1, col: 1, value: 2 },
+      { row: 2, col: 3, value: 2 },
+      { row: 3, col: 1, value: 2 },
     ],
   },
 ];
@@ -248,6 +367,16 @@ function updateLiveTrail() {
   el.textContent = emojiTimeline.join(' ');
 }
 
+
+function updatePuzzleHeader() {
+  document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
+  const titleEl = document.getElementById('puzzle-title');
+  if (!titleEl) return;
+  const difficulty = puzzle.difficulty ? `${puzzle.difficulty} · ` : '';
+  const laserText = `Solve with exactly ${puzzle.requiredLasers} laser${puzzle.requiredLasers === 1 ? '' : 's'}`;
+  titleEl.innerHTML = `${escapeHtml(puzzle.title)}<br><span style="font-size:0.78em;color:#9df4ff;opacity:0.95;">${escapeHtml(difficulty + laserText)}</span>`;
+}
+
 // --- Rendering (M1–M3) ---
 
 function renderBoard() {
@@ -297,7 +426,7 @@ function populatePuzzleSelect() {
   PUZZLES.forEach((pz, idx) => {
     const opt = document.createElement('option');
     opt.value = idx;
-    opt.textContent = `#${pz.id}: ${pz.title}`;
+    opt.textContent = `#${pz.id}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
     select.appendChild(opt);
   });
   select.value = currentPuzzleIndex;
@@ -308,8 +437,7 @@ function switchPuzzle(idx) {
   currentPuzzleIndex = idx;
   puzzle = { ...PUZZLES[currentPuzzleIndex] };
   selectedChallengePhrase = '';
-  document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
-  document.getElementById('puzzle-title').textContent = puzzle.title;
+  updatePuzzleHeader();
   resetGame(false);
   firstMoveTracked = false;
   updateLiveTrail();
@@ -357,8 +485,7 @@ function loadGameState() {
       selectedChallengePhrase = typeof data.selectedChallengePhrase === 'string'
         ? data.selectedChallengePhrase
         : '';
-      document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
-      document.getElementById('puzzle-title').textContent = puzzle.title;
+      updatePuzzleHeader();
       populatePuzzleSelect();
       renderBoard();
       updateLaserCount();
@@ -477,7 +604,7 @@ function formatChallengePhrase(phrase) {
 function showVictoryModal() {
   document.getElementById('victory-modal').style.display = 'flex';
   const result = getResultData();
-  document.getElementById('modal-puzzle').textContent = `Puzzle #${result.puzzleId}`;
+  document.getElementById('modal-puzzle').textContent = `Puzzle #${result.puzzleId} · ${result.puzzleTitle} · ${result.difficulty}`;
   document.getElementById('modal-size').textContent = result.gridSize;
 
   setResultStatCard('modal-lasers', '⚡', result.requiredLasers, 'Lasers');
@@ -538,6 +665,8 @@ function getResultData() {
   const rank = getRank();
   return {
     puzzleId: puzzle.id,
+    puzzleTitle: puzzle.title,
+    difficulty: puzzle.difficulty || 'Practice',
     gridSize: `${puzzle.gridSize}x${puzzle.gridSize}`,
     requiredLasers: puzzle.requiredLasers,
     toggles,
@@ -660,8 +789,7 @@ function initGame() {
     // If no save, show first puzzle
     puzzle = { ...PUZZLES[0] };
     currentPuzzleIndex = 0;
-    document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
-    document.getElementById('puzzle-title').textContent = puzzle.title;
+    updatePuzzleHeader();
     populatePuzzleSelect();
     resetGame(false);
   }
@@ -733,11 +861,11 @@ function createVictoryImageCanvas() {
   // Puzzle summary
   ctx.save();
   ctx.textAlign = 'center';
-  ctx.font = 'bold 32px Arial, sans-serif';
+  ctx.font = 'bold 28px Arial, sans-serif';
   ctx.fillStyle = '#9ff2ff';
   ctx.shadowColor = 'rgba(126,234,255,0.45)';
   ctx.shadowBlur = 8;
-  ctx.fillText(`Puzzle #${result.puzzleId} · ${result.gridSize}`, centerX, cardY + 388);
+  drawWrappedText(ctx, `Puzzle #${result.puzzleId} · ${result.puzzleTitle} · ${result.difficulty} · ${result.gridSize}`, centerX, cardY + 388, cardW - 180, 32, 'center', 2);
   ctx.restore();
 
   // Stats row
@@ -1083,7 +1211,7 @@ async function shareResult() {
   });
 
   const result = getResultData();
-  const text = `I solved LaserGrid #${result.puzzleId} in ${result.toggles} toggles. ${result.challengePhrase}`;
+  const text = `I solved LaserGrid #${result.puzzleId}: ${result.puzzleTitle} (${result.difficulty}) in ${result.toggles} toggles. ${result.challengePhrase}`;
   const shareData = {
     title: 'LaserGrid Result',
     text,
