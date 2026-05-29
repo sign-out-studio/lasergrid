@@ -92,10 +92,7 @@ let win = false;
 let emojiTimeline = [];
 let lastPerfectCores = 0;
 let selectedChallengePhrase = '';
-let selectedChallengePhraseRank = '';
-let selectedChallengePhraseTarget = '';
 let celebratingWin = false;
-let celebrationTimeoutId = null;
 
 // --- Analytics (M18) ---
 let firstMoveTracked = false;
@@ -171,14 +168,7 @@ function resetGame(clearSave = true) {
   lastPerfectCores = 0;
   firstMoveTracked = false;
   selectedChallengePhrase = '';
-  selectedChallengePhraseRank = '';
-  selectedChallengePhraseTarget = '';
   celebratingWin = false;
-  if (celebrationTimeoutId) {
-    clearTimeout(celebrationTimeoutId);
-    celebrationTimeoutId = null;
-  }
-  hideCelebration();
   stopTimer();
   updateLaserCount();
   updateToggleCount();
@@ -318,8 +308,6 @@ function switchPuzzle(idx) {
   currentPuzzleIndex = idx;
   puzzle = { ...PUZZLES[currentPuzzleIndex] };
   selectedChallengePhrase = '';
-  selectedChallengePhraseRank = '';
-  selectedChallengePhraseTarget = '';
   document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
   document.getElementById('puzzle-title').textContent = puzzle.title;
   resetGame(false);
@@ -346,9 +334,7 @@ function saveGameState() {
       timerStarted,
       win,
       emojiTimeline,
-      selectedChallengePhrase,
-      selectedChallengePhraseRank,
-      selectedChallengePhraseTarget
+      selectedChallengePhrase
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {}
@@ -368,18 +354,9 @@ function loadGameState() {
       win = !!data.win;
       emojiTimeline = Array.isArray(data.emojiTimeline) ? data.emojiTimeline : [];
       lastPerfectCores = countPerfectCores();
-      selectedChallengePhraseRank = typeof data.selectedChallengePhraseRank === 'string'
-        ? data.selectedChallengePhraseRank
+      selectedChallengePhrase = typeof data.selectedChallengePhrase === 'string'
+        ? data.selectedChallengePhrase
         : '';
-      selectedChallengePhraseTarget = typeof data.selectedChallengePhraseTarget === 'string'
-        ? data.selectedChallengePhraseTarget
-        : '';
-      selectedChallengePhrase =
-        typeof data.selectedChallengePhrase === 'string' &&
-        selectedChallengePhraseRank &&
-        selectedChallengePhraseTarget
-          ? data.selectedChallengePhrase
-          : '';
       document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
       document.getElementById('puzzle-title').textContent = puzzle.title;
       populatePuzzleSelect();
@@ -457,8 +434,7 @@ function checkWin() {
       rank
     });
     showCelebration();
-    celebrationTimeoutId = setTimeout(() => {
-      celebrationTimeoutId = null;
+    setTimeout(() => {
       celebratingWin = false;
       hideCelebration();
       showVictoryModal();
@@ -468,16 +444,48 @@ function checkWin() {
   }
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function setResultStatCard(id, icon, value, label) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `
+    <span class="stat-icon" aria-hidden="true">${icon}</span>
+    <span class="stat-value">${escapeHtml(value)}</span>
+    <span class="stat-label">${escapeHtml(label)}</span>
+  `;
+}
+
+function formatChallengePhrase(phrase) {
+  const text = String(phrase || '');
+  const splitIndex = text.indexOf('. ');
+  if (splitIndex === -1) {
+    return `<strong>${escapeHtml(text)}</strong>`;
+  }
+  const first = text.slice(0, splitIndex + 1);
+  const second = text.slice(splitIndex + 2);
+  return `<strong>${escapeHtml(first)}</strong><span>${escapeHtml(second)}</span>`;
+}
+
 function showVictoryModal() {
   document.getElementById('victory-modal').style.display = 'flex';
   const result = getResultData();
   document.getElementById('modal-puzzle').textContent = `Puzzle #${result.puzzleId}`;
   document.getElementById('modal-size').textContent = result.gridSize;
-  document.getElementById('modal-lasers').textContent = `Lasers: ${result.requiredLasers}`;
-  document.getElementById('modal-time').textContent = `Time: ${result.time}`;
-  document.getElementById('modal-toggles').textContent = `Toggles: ${result.toggles}`;
-  document.getElementById('modal-rank').textContent = `Rank: ${result.rank}`;
-  document.getElementById('modal-challenge').textContent = result.challengePhrase;
+
+  setResultStatCard('modal-lasers', '⚡', result.requiredLasers, 'Lasers');
+  setResultStatCard('modal-time', '⏱', result.time, 'Time');
+  setResultStatCard('modal-toggles', '↻', result.toggles, 'Toggles');
+  setResultStatCard('modal-rank', '★', result.rank, 'Rank');
+
+  document.getElementById('modal-challenge').innerHTML = formatChallengePhrase(result.challengePhrase);
   document.getElementById('modal-emoji-timeline').textContent = result.timeline;
   document.getElementById('share-confirm').style.display = 'none';
 }
@@ -517,23 +525,12 @@ function recordMoveEmoji(moveType, beforePerfect, afterPerfect, afterOverload) {
 
 // --- Share Logic (M12D) ---
 function getChallengePhrase(rank, target) {
-  const targetText = String(target);
-
-  if (
-    selectedChallengePhrase &&
-    selectedChallengePhraseRank === rank &&
-    selectedChallengePhraseTarget === targetText
-  ) {
-    return selectedChallengePhrase;
-  }
+  if (selectedChallengePhrase) return selectedChallengePhrase;
 
   const phrases = CHALLENGE_PHRASES[rank] || CHALLENGE_PHRASES['Laser Chaos'];
   const chosen = phrases[Math.floor(Math.random() * phrases.length)];
 
-  selectedChallengePhrase = chosen.replaceAll('{target}', targetText);
-  selectedChallengePhraseRank = rank;
-  selectedChallengePhraseTarget = targetText;
-
+  selectedChallengePhrase = chosen.replaceAll('{target}', String(target));
   return selectedChallengePhrase;
 }
 
@@ -681,71 +678,356 @@ document.addEventListener('DOMContentLoaded', initGame);
 
 function createVictoryImageCanvas() {
   const result = getResultData();
-
   const canvas = document.createElement('canvas');
   canvas.width = 1080;
   canvas.height = 1350;
   const ctx = canvas.getContext('2d');
+  const centerX = canvas.width / 2;
 
-  // Background
-  ctx.fillStyle = '#10131a';
+  const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  bg.addColorStop(0, '#070d18');
+  bg.addColorStop(0.55, '#10131a');
+  bg.addColorStop(1, '#060914');
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Modal-like card
-  const cardX = 90;
-  const cardY = 110;
-  const cardW = 900;
-  const cardH = 1130;
-  const radius = 42;
+  const cardX = 72;
+  const cardY = 62;
+  const cardW = 936;
+  const cardH = 1218;
+  const radius = 36;
 
-  ctx.fillStyle = '#181c24';
+  ctx.save();
+  ctx.shadowColor = 'rgba(126, 234, 255, 0.65)';
+  ctx.shadowBlur = 34;
+  ctx.fillStyle = '#151922';
   roundRect(ctx, cardX, cardY, cardW, cardH, radius);
   ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  const borderGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+  borderGrad.addColorStop(0, 'rgba(126, 234, 255, 0.75)');
+  borderGrad.addColorStop(0.5, 'rgba(199, 125, 255, 0.55)');
+  borderGrad.addColorStop(1, 'rgba(126, 234, 255, 0.35)');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 3;
+  roundRect(ctx, cardX, cardY, cardW, cardH, radius);
+  ctx.stroke();
+  ctx.restore();
 
   // Title
+  ctx.save();
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#7eeaff';
-  ctx.font = 'bold 72px Arial, sans-serif';
-  ctx.fillText('Congratulations!', canvas.width / 2, 230);
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 66px Arial, sans-serif';
+  ctx.fillStyle = '#bff6ff';
+  ctx.shadowColor = '#7eeaff';
+  ctx.shadowBlur = 18;
+  ctx.fillText('Congratulations!', centerX, cardY + 112);
+  ctx.restore();
 
-  // Result details
-  ctx.fillStyle = '#e0e6ed';
-  ctx.font = '48px Arial, sans-serif';
+  // Decorative mini grid (non-spoiler)
+  drawResultMiniGrid(ctx, centerX - 72, cardY + 182, 144);
 
-  let y = 340;
-  const centerX = canvas.width / 2;
-  const lineGap = 66;
+  // Puzzle summary
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 32px Arial, sans-serif';
+  ctx.fillStyle = '#9ff2ff';
+  ctx.shadowColor = 'rgba(126,234,255,0.45)';
+  ctx.shadowBlur = 8;
+  ctx.fillText(`Puzzle #${result.puzzleId} · ${result.gridSize}`, centerX, cardY + 388);
+  ctx.restore();
 
-  ctx.fillText(`Puzzle #${result.puzzleId}`, centerX, y); y += lineGap;
-  ctx.fillText(result.gridSize, centerX, y); y += lineGap;
-  ctx.fillText(`Lasers: ${result.requiredLasers}`, centerX, y); y += lineGap;
-  ctx.fillText(`Time: ${result.time}`, centerX, y); y += lineGap;
-  ctx.fillText(`Toggles: ${result.toggles}`, centerX, y); y += lineGap;
-  ctx.fillText(`Rank: ${result.rank}`, centerX, y); y += 88;
+  // Stats row
+  const statW = 178;
+  const statH = 126;
+  const statGap = 22;
+  const statTotalW = statW * 4 + statGap * 3;
+  const statStartX = centerX - statTotalW / 2;
+  const statY = cardY + 456;
+  const stats = [
+    { icon: '⚡', value: result.requiredLasers, label: 'Lasers' },
+    { icon: '⏱', value: result.time, label: 'Time' },
+    { icon: '↻', value: result.toggles, label: 'Toggles' },
+    { icon: '★', value: result.rank, label: 'Rank', accent: '#00ff99' }
+  ];
 
-  // Challenge phrase
-  ctx.fillStyle = '#ffe066';
-  ctx.font = 'bold 44px Arial, sans-serif';
-  y = wrapCanvasText(ctx, result.challengePhrase, centerX, y, 820, 56, true);
-  y += 50;
+  stats.forEach((stat, index) => {
+    drawStatCard(
+      ctx,
+      statStartX + index * (statW + statGap),
+      statY,
+      statW,
+      statH,
+      stat.icon,
+      stat.value,
+      stat.label,
+      stat.accent
+    );
+  });
 
-  // Emoji timeline
+  // Challenge panel
+  const challengeY = statY + statH + 72;
+  const challengeH = drawChallengePanel(ctx, result.challengePhrase, cardX + 66, challengeY, cardW - 132);
+
+  // Trail
+  const trailY = challengeY + challengeH + 86;
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 36px Arial, sans-serif';
+  ctx.fillStyle = '#9ff2ff';
+  ctx.fillText('Trail:', cardX + 110, trailY);
+  ctx.font = '40px Arial, sans-serif';
   ctx.fillStyle = '#ffffff';
-  ctx.font = '48px Arial, sans-serif';
-  y = wrapCanvasText(ctx, result.timeline, centerX, y, 820, 64, true);
-  y += 70;
+  drawWrappedText(ctx, result.timeline || '🏆', cardX + 225, trailY, cardW - 310, 50, 'left', 2);
+  ctx.restore();
 
-  // Game link
-  ctx.fillStyle = '#7eeaff';
-  ctx.font = '30px Arial, sans-serif';
-  ctx.fillText('Play LaserGrid:', centerX, y);
-  y += 44;
-
-  ctx.fillStyle = '#e0e6ed';
+  // Footer link, intentionally lower to balance the card vertically.
+  const footerY = cardY + cardH - 116;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 34px Arial, sans-serif';
+  ctx.fillStyle = '#9ff2ff';
+  ctx.fillText('Play LaserGrid:', centerX, footerY);
   ctx.font = '28px Arial, sans-serif';
-  wrapCanvasText(ctx, result.url, centerX, y, 820, 38, true);
+  ctx.fillStyle = '#e0e6ed';
+  drawWrappedText(ctx, result.url, centerX, footerY + 44, cardW - 160, 36, 'center', 2);
+  ctx.restore();
 
   return canvas;
+}
+
+function drawResultMiniGrid(ctx, x, y, size) {
+  const radius = 18;
+  const cell = size / 4;
+
+  ctx.save();
+  roundRect(ctx, x, y, size, size, radius);
+  ctx.clip();
+
+  const boardGrad = ctx.createLinearGradient(x, y, x + size, y + size);
+  boardGrad.addColorStop(0, '#081522');
+  boardGrad.addColorStop(0.55, '#121927');
+  boardGrad.addColorStop(1, '#0b1020');
+  ctx.fillStyle = boardGrad;
+  ctx.fillRect(x, y, size, size);
+
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      const px = x + col * cell + 7;
+      const py = y + row * cell + 7;
+      const s = cell - 14;
+      ctx.save();
+      ctx.globalAlpha = 0.62;
+      ctx.fillStyle = '#172333';
+      roundRect(ctx, px, py, s, s, 8);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(126,234,255,0.22)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, px, py, s, s, 8);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(126,234,255,0.26)';
+  ctx.lineWidth = 1.5;
+  for (let i = 1; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + i * cell, y + 8);
+    ctx.lineTo(x + i * cell, y + size - 8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y + i * cell);
+    ctx.lineTo(x + size - 8, y + i * cell);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Contained victory beams. These are clipped to the mini-grid only.
+  ctx.save();
+  ctx.globalAlpha = 0.72;
+  const hBeam = ctx.createLinearGradient(x + 8, y, x + size - 8, y);
+  hBeam.addColorStop(0, 'rgba(199,125,255,0)');
+  hBeam.addColorStop(0.18, 'rgba(199,125,255,0.70)');
+  hBeam.addColorStop(0.5, 'rgba(126,234,255,0.95)');
+  hBeam.addColorStop(0.82, 'rgba(199,125,255,0.70)');
+  hBeam.addColorStop(1, 'rgba(126,234,255,0)');
+  ctx.fillStyle = hBeam;
+  ctx.shadowColor = '#c77dff';
+  ctx.shadowBlur = 12;
+  ctx.fillRect(x + 8, y + size * 0.53 - 4, size - 16, 8);
+
+  const vBeam = ctx.createLinearGradient(x, y + 8, x, y + size - 8);
+  vBeam.addColorStop(0, 'rgba(126,234,255,0)');
+  vBeam.addColorStop(0.18, 'rgba(126,234,255,0.70)');
+  vBeam.addColorStop(0.5, 'rgba(199,125,255,0.92)');
+  vBeam.addColorStop(0.82, 'rgba(126,234,255,0.70)');
+  vBeam.addColorStop(1, 'rgba(126,234,255,0)');
+  ctx.fillStyle = vBeam;
+  ctx.shadowColor = '#7eeaff';
+  ctx.shadowBlur = 12;
+  ctx.fillRect(x + size * 0.55 - 4, y + 8, 8, size - 16);
+  ctx.restore();
+
+  const glowPoints = [
+    [0.28, 0.28],
+    [0.72, 0.34],
+    [0.50, 0.68]
+  ];
+  for (const [gx, gy] of glowPoints) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x + size * gx, y + size * gy, size * 0.055, 0, Math.PI * 2);
+    ctx.fillStyle = '#00ff99';
+    ctx.shadowColor = '#00ff99';
+    ctx.shadowBlur = 18;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(126,234,255,0.75)';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#7eeaff';
+  ctx.shadowBlur = 12;
+  roundRect(ctx, x, y, size, size, radius);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawStatCard(ctx, x, y, w, h, icon, value, label, accent = '#7eeaff') {
+  ctx.save();
+  const cardGrad = ctx.createLinearGradient(x, y, x, y + h);
+  cardGrad.addColorStop(0, '#102033');
+  cardGrad.addColorStop(1, '#0d141f');
+  ctx.fillStyle = cardGrad;
+  ctx.strokeStyle = 'rgba(126,234,255,0.58)';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(126,234,255,0.36)';
+  ctx.shadowBlur = 10;
+  roundRect(ctx, x, y, w, h, 13);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '30px Arial, sans-serif';
+  ctx.fillStyle = accent;
+  ctx.shadowColor = accent;
+  ctx.shadowBlur = 8;
+  ctx.fillText(icon, x + w / 2, y + 28);
+
+  const valueText = String(value);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = valueText.length > 9 ? '#dffaff' : '#ffffff';
+  ctx.font = valueText.length > 9 ? 'bold 23px Arial, sans-serif' : 'bold 31px Arial, sans-serif';
+  drawWrappedText(ctx, valueText, x + w / 2, y + 66, w - 18, 27, 'center', 2);
+
+  ctx.font = '20px Arial, sans-serif';
+  ctx.fillStyle = '#9ff2ff';
+  ctx.fillText(label, x + w / 2, y + h - 20);
+  ctx.restore();
+}
+
+function drawChallengePanel(ctx, text, x, y, w) {
+  const h = 148;
+  ctx.save();
+  const panelGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+  panelGrad.addColorStop(0, '#102033');
+  panelGrad.addColorStop(0.65, '#171a26');
+  panelGrad.addColorStop(1, '#251334');
+  ctx.fillStyle = panelGrad;
+  ctx.strokeStyle = 'rgba(126,234,255,0.58)';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(126,234,255,0.25)';
+  ctx.shadowBlur = 8;
+  roundRect(ctx, x, y, w, h, 18);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  const iconX = x + 48;
+  const iconY = y + h / 2;
+  ctx.strokeStyle = '#7eeaff';
+  ctx.fillStyle = '#121927';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = '#7eeaff';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(iconX, iconY, 24, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#7eeaff';
+  ctx.beginPath();
+  ctx.moveTo(iconX, iconY - 13);
+  ctx.lineTo(iconX + 6, iconY);
+  ctx.lineTo(iconX, iconY + 13);
+  ctx.lineTo(iconX - 6, iconY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  const phrase = String(text || '');
+  const splitIndex = phrase.indexOf('. ');
+  const first = splitIndex > -1 ? phrase.slice(0, splitIndex + 1) : phrase;
+  const second = splitIndex > -1 ? phrase.slice(splitIndex + 2) : '';
+  const textX = x + 92;
+  const textW = w - 120;
+
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#bff6ff';
+  ctx.font = 'bold 29px Arial, sans-serif';
+  let nextY = drawWrappedText(ctx, first, textX, y + 52, textW, 34, 'left', 2);
+  if (second) {
+    ctx.font = '27px Arial, sans-serif';
+    ctx.fillStyle = '#dffaff';
+    drawWrappedText(ctx, second, textX, nextY + 4, textW, 32, 'left', 2);
+  }
+  ctx.restore();
+
+  return h;
+}
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, align = 'left', maxLines = Infinity) {
+  const value = String(text || '');
+  const words = value.split(/\s+/).filter(Boolean);
+  const previousAlign = ctx.textAlign;
+  ctx.textAlign = align;
+  let line = '';
+  let linesDrawn = 0;
+
+  for (let i = 0; i < words.length; i++) {
+    const testLine = line ? `${line} ${words[i]}` : words[i];
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && line) {
+      if (linesDrawn < maxLines) {
+        ctx.fillText(line, x, y);
+        y += lineHeight;
+        linesDrawn++;
+      }
+      line = words[i];
+    } else {
+      line = testLine;
+    }
+  }
+
+  if (line && linesDrawn < maxLines) {
+    ctx.fillText(line, x, y);
+    y += lineHeight;
+  }
+
+  ctx.textAlign = previousAlign;
+  return y;
 }
 
 function downloadVictoryImage() {
@@ -826,7 +1108,6 @@ async function shareResult() {
     }
   } catch (err) {
     // If the image/file path fails, fall back to text + URL share below.
-    // User cancellation is handled by the outer share fallback as a no-op.
   }
 
   try {
