@@ -1259,3 +1259,55 @@ body.win-flash::before {
     padding: 10px 9px 10px 45px;
   }
 }
+/* --- Mobile readability polish for M14 victory modal --- */
+@media (max-width: 600px) {
+  #victory-modal .result-stat .stat-icon {
+    font-size: 1.28rem;
+  }
+
+  #victory-modal .result-stat .stat-value {
+    font-size: clamp(0.82rem, 3.4vw, 1rem);
+    line-height: 1.08;
+  }
+
+  #victory-modal .result-stat .stat-label {
+    font-size: clamp(0.64rem, 2.65vw, 0.78rem);
+    line-height: 1.08;
+  }
+
+  #victory-modal .modal-challenge {
+    font-size: clamp(0.88rem, 3.55vw, 1rem);
+    line-height: 1.28;
+  }
+
+  #victory-modal .modal-challenge strong {
+    font-size: 1.02em;
+  }
+
+  #victory-modal .modal-challenge span {
+    font-size: 0.96em;
+  }
+
+  #victory-modal .result-trail-label {
+    font-size: 1.05rem;
+  }
+
+  #victory-modal .emoji-timeline {
+    font-size: 1.18rem;
+  }
+
+  #victory-modal .share-btn {
+    font-size: clamp(0.92rem, 3.8vw, 1.08rem);
+    min-height: 42px;
+  }
+
+  #victory-modal #share-result-btn {
+    font-size: clamp(1rem, 4vw, 1.16rem);
+    min-height: 46px;
+  }
+
+  #victory-modal #close-modal-btn {
+    font-size: 1rem;
+    min-height: 42px;
+  }
+}
