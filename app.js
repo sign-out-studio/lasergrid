@@ -216,6 +216,30 @@ const PUZZLES = [
 ];
 
 // --- M16B: Daily Puzzle Helpers ---
+// --- M16D: Daily Share Format Preparation ---
+function getResultIdentityLabel(result) {
+  if (result && result.isDaily && result.dailyNumber) {
+    return `LaserGrid Daily #${result.dailyNumber}`;
+  }
+  return `LaserGrid #${result.puzzleId}`;
+}
+
+function getResultSubtitle(result) {
+  const parts = [];
+  if (result.difficulty) parts.push(result.difficulty);
+  if (result.gridSize) parts.push(result.gridSize);
+  if (result.requiredLasers) {
+    parts.push(`${result.requiredLasers} Laser${result.requiredLasers === 1 ? '' : 's'}`);
+  }
+  return parts.join(' · ');
+}
+
+function getResultFilename(result) {
+  if (result && result.isDaily && result.dailyNumber) {
+    return `lasergrid-daily-${result.dailyNumber}.png`;
+  }
+  return `lasergrid-result-puzzle-${result.puzzleId}.png`;
+}
 // These helpers prepare for future Daily Puzzle mode.
 function getTodayDateKey(date = new Date()) {
   // return local date as YYYY-MM-DD
@@ -810,7 +834,9 @@ function getResultData() {
 
 function generateShareText() {
   const result = getResultData();
-  return `LaserGrid #${result.puzzleId}\n${result.gridSize} · ${result.requiredLasers} Lasers\n\nSolved in ${result.toggles} toggles · ${result.time}\nRank: ${result.rank}\n\n${result.timeline}\n\n${result.challengePhrase}\n${result.url}`;
+  const identity = getResultIdentityLabel(result);
+  const subtitle = getResultSubtitle(result);
+  return `${identity}\n${subtitle}\n\nSolved in ${result.toggles} toggles · ${result.time}\nRank: ${result.rank}\n\n${result.timeline}\n\n${result.challengePhrase}\n${result.url}`;
 }
 
 function copyShareText() {
@@ -1300,7 +1326,7 @@ function downloadVictoryImage() {
     const result = getResultData();
     const canvas = createVictoryImageCanvas();
     const link = document.createElement('a');
-    link.download = `lasergrid-result-puzzle-${result.puzzleId}.png`;
+    link.download = getResultFilename(result);
     link.href = canvas.toDataURL('image/png');
     document.body.appendChild(link);
     link.click();
@@ -1327,7 +1353,7 @@ async function createVictoryImageFile() {
 
   return new File(
     [blob],
-    `lasergrid-result-puzzle-${result.puzzleId}.png`,
+    getResultFilename(result),
     { type: 'image/png' }
   );
 }
@@ -1341,7 +1367,8 @@ async function shareResult() {
   });
 
   const result = getResultData();
-  const text = `I solved LaserGrid #${result.puzzleId}: ${result.puzzleTitle} (${result.difficulty}) in ${result.toggles} toggles. ${result.challengePhrase}`;
+  const identity = getResultIdentityLabel(result);
+  const text = `I solved ${identity}: ${result.puzzleTitle} (${result.difficulty}) in ${result.toggles} toggles. ${result.challengePhrase}`;
   const shareData = {
     title: 'LaserGrid Result',
     text,
