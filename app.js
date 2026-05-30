@@ -47,6 +47,7 @@ function saveDailyCompletion(result) {
     rank: result.rank
   };
   saveDailyCompletions(completions);
+  updateDailyStatus();
 }
 // LaserGrid Game Logic (M0–M3)
 // Only HTML, CSS, Vanilla JS. No frameworks.
@@ -534,6 +535,7 @@ function resetGame(clearSave = true) {
   updateLiveTrail();
   hideVictoryModal();
   renderBoard();
+  updateDailyStatus();
   if (clearSave) {
     clearSaveData();
   }
@@ -625,15 +627,24 @@ function updatePuzzleHeader() {
   } else {
     subtitle = `${difficulty} · ${laserText}`;
   }
-  // M16I: Show 'Solved today' if daily completion exists
-  let solvedLabel = '';
-  const dailyCompletion = getDailyCompletionForPuzzle(puzzle);
-  if (isDailyMode() && dailyCompletion) {
-    solvedLabel = `<span style="display:inline-block;margin-left:8px;padding:2px 8px;font-size:0.82em;background:#1a2a2f;color:#7eeaff;border-radius:8px;vertical-align:middle;opacity:0.92;">Solved today</span>`;
-  }
-  titleEl.innerHTML = `${escapeHtml(puzzle.title)}${solvedLabel}<br><span style="font-size:0.78em;color:#9df4ff;opacity:0.95;">${escapeHtml(subtitle)}</span>`;
+  titleEl.innerHTML = `${escapeHtml(puzzle.title)}<br><span style="font-size:0.78em;color:#9df4ff;opacity:0.95;">${escapeHtml(subtitle)}</span>`;
+  updateDailyStatus();
 }
+function updateDailyStatus() {
+  const el = document.getElementById('daily-status');
+  if (!el) return;
 
+  const completion = getDailyCompletionForPuzzle();
+
+  if (!isDailyMode() || !completion) {
+    el.textContent = '';
+    el.style.display = 'none';
+    return;
+  }
+
+  el.textContent = `Solved today · ${completion.rank} · ${completion.toggles} toggles · ${completion.time}`;
+  el.style.display = 'block';
+}
 // --- Rendering (M1–M3) ---
 
 function renderBoard() {
@@ -720,6 +731,7 @@ function switchPuzzle(idx) {
   selectedChallengePhrase = '';
   updatePuzzleHeader();
   resetGame(false);
+  updateDailyStatus();
   firstMoveTracked = false;
   updateLiveTrail();
   saveGameState();
@@ -857,9 +869,9 @@ function checkWin() {
 
     // M16I: Save daily completion only for daily puzzles.
     saveDailyCompletion(result);
-
-    // Refresh header so "Solved today" can appear after completion is saved.
+    // Refresh header and status so solved status appears after completion is saved.
     updatePuzzleHeader();
+    updateDailyStatus();
 
     // --- Analytics: puzzle_solved ---
     trackEvent('puzzle_solved', {
@@ -1117,6 +1129,7 @@ function initGame() {
     updatePuzzleHeader();
     populatePuzzleSelect();
     resetGame(false);
+    updateDailyStatus();
   }
   updateLiveTrail(); // Ensure trail is initialized
   // --- Analytics: game_loaded ---

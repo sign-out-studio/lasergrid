@@ -1,3 +1,28 @@
+/* --- M16J: Daily Completion Status --- */
+.daily-status {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: #7eeaff;
+  text-align: center;
+  opacity: 0.95;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  background: none;
+  border-radius: 8px;
+  padding: 0;
+  line-height: 1.3;
+  display: none;
+  max-width: 98vw;
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .daily-status {
+    font-size: 0.8rem;
+    margin-top: 2px;
+    padding: 0;
+  }
+}
 /* --- Visual Tokens (M14C safe cleanup) --- */
 :root {
   --color-bg: #10131a;
