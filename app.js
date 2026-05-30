@@ -558,12 +558,24 @@ function updateLiveTrail() {
 
 
 function updatePuzzleHeader() {
-  document.getElementById('puzzle-number').textContent = `Puzzle #${puzzle.id}`;
+  // M16F: Daily/Practice UI label
+  const numberEl = document.getElementById('puzzle-number');
+  if (isDailyMode() && puzzle.dailyNumber) {
+    numberEl.textContent = `Daily #${puzzle.dailyNumber}`;
+  } else {
+    numberEl.textContent = `Puzzle #${puzzle.id}`;
+  }
   const titleEl = document.getElementById('puzzle-title');
   if (!titleEl) return;
-  const difficulty = puzzle.difficulty ? `${puzzle.difficulty} · ` : '';
+  const difficulty = puzzle.difficulty || '';
   const laserText = `Solve with exactly ${puzzle.requiredLasers} laser${puzzle.requiredLasers === 1 ? '' : 's'}`;
-  titleEl.innerHTML = `${escapeHtml(puzzle.title)}<br><span style="font-size:0.78em;color:#9df4ff;opacity:0.95;">${escapeHtml(difficulty + laserText)}</span>`;
+  let subtitle = '';
+  if (isDailyMode() && puzzle.dailyNumber) {
+    subtitle = `Daily Puzzle · ${difficulty} · ${laserText}`;
+  } else {
+    subtitle = `${difficulty} · ${laserText}`;
+  }
+  titleEl.innerHTML = `${escapeHtml(puzzle.title)}<br><span style="font-size:0.78em;color:#9df4ff;opacity:0.95;">${escapeHtml(subtitle)}</span>`;
 }
 
 // --- Rendering (M1–M3) ---
@@ -612,15 +624,28 @@ function renderBoard() {
 function populatePuzzleSelect() {
   const select = document.getElementById('puzzle-select');
   select.innerHTML = '';
-    const practice = getPracticePuzzles();
-    practice.forEach((pz, idx) => {
-      const opt = document.createElement('option');
-      opt.value = idx;
-      opt.textContent = `#${pz.id}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
-      select.appendChild(opt);
-    });
-    // Set selector to current practice puzzle if in practice mode, else default to 0
-    select.value = currentMode === 'practice' ? practice.findIndex(p => p.id === puzzle.id) : 0;
+  const practice = getPracticePuzzles();
+
+  if (currentMode === 'daily') {
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Practice Puzzles';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    select.appendChild(placeholder);
+  }
+
+  practice.forEach((pz, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = `#${pz.id}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
+    select.appendChild(opt);
+  });
+
+  if (currentMode === 'practice') {
+    const selectedPracticeIndex = practice.findIndex(p => p.id === puzzle.id);
+    select.value = String(selectedPracticeIndex >= 0 ? selectedPracticeIndex : 0);
+  }
 }
 
 function switchPuzzle(idx) {
@@ -806,7 +831,12 @@ function formatChallengePhrase(phrase) {
 function showVictoryModal() {
   document.getElementById('victory-modal').style.display = 'flex';
   const result = getResultData();
-  document.getElementById('modal-puzzle').textContent = `Puzzle #${result.puzzleId} · ${result.puzzleTitle} · ${result.difficulty}`;
+  const modalPuzzleEl = document.getElementById('modal-puzzle');
+  if (result.isDaily && result.dailyNumber) {
+    modalPuzzleEl.textContent = `Daily #${result.dailyNumber} · ${result.puzzleTitle} · ${result.difficulty}`;
+  } else {
+    modalPuzzleEl.textContent = `Puzzle #${result.puzzleId} · ${result.puzzleTitle} · ${result.difficulty}`;
+  }
   document.getElementById('modal-size').textContent = result.gridSize;
 
   setResultStatCard('modal-lasers', '⚡', result.requiredLasers, 'Lasers');
@@ -972,6 +1002,7 @@ function initGame() {
   // Puzzle select logic (M8)
   const puzzleSelect = document.getElementById('puzzle-select');
   puzzleSelect.addEventListener('change', e => {
+    if (e.target.value === '') return;
     switchPuzzle(Number(e.target.value));
   });
   document.getElementById('next-puzzle-btn').addEventListener('click', nextPuzzle);
