@@ -634,15 +634,21 @@ function updateDailyStatus() {
   const el = document.getElementById('daily-status');
   if (!el) return;
 
-  const completion = getDailyCompletionForPuzzle();
-
-  if (!isDailyMode() || !completion) {
+  if (!isDailyMode()) {
     el.textContent = '';
     el.style.display = 'none';
     return;
   }
 
-  el.textContent = `Solved today · ${completion.rank} · ${completion.toggles} toggles · ${completion.time}`;
+  const stats = getDailyStats();
+  const completion = getDailyCompletionForPuzzle();
+
+  if (completion) {
+    el.textContent = `Solved today · ${completion.rank} · ${completion.toggles} toggles · ${completion.time} · Streak ${stats.currentStreak} · Completed ${stats.completedCount}`;
+  } else {
+    el.textContent = `Daily streak ${stats.currentStreak} · Completed ${stats.completedCount}`;
+  }
+
   el.style.display = 'block';
 }
 // --- Rendering (M1–M3) ---
@@ -687,16 +693,56 @@ function renderBoard() {
     }
   }
 }
-// --- Puzzle Selection (M8) ---
-function populatePuzzleSelect() {
-    // M16G: Practice/Archive label logic
-    const labelEl = document.getElementById('practice-label');
-    if (currentMode === 'daily') {
-      labelEl.textContent = 'Practice Puzzles';
-    } else {
-      labelEl.textContent = 'Practice Mode';
+// --- Puzzle Selection (M8 / M16M) ---
+
+function getSortedDailyPuzzles() {
+  return getDailyPuzzles().slice().sort((a, b) => {
+    if ((a.dailyNumber || 0) !== (b.dailyNumber || 0)) {
+      return (a.dailyNumber || 0) - (b.dailyNumber || 0);
     }
+    return String(a.releaseDate || '').localeCompare(String(b.releaseDate || ''));
+  });
+}
+
+function populateDailySelect() {
+  const select = document.getElementById('daily-select');
+  if (!select) return;
+
+  select.innerHTML = '';
+
+  const daily = getSortedDailyPuzzles();
+
+  if (currentMode === 'practice') {
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Daily Archive';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    select.appendChild(placeholder);
+  }
+
+  daily.forEach((pz, idx) => {
+    const opt = document.createElement('option');
+    opt.value = String(idx);
+    opt.textContent = `Daily #${pz.dailyNumber}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
+    select.appendChild(opt);
+  });
+
+  if (currentMode === 'daily') {
+    const selectedDailyIndex = daily.findIndex(p => p.id === puzzle.id);
+    select.value = String(selectedDailyIndex >= 0 ? selectedDailyIndex : 0);
+  }
+}
+
+function populatePuzzleSelect() {
+  const labelEl = document.getElementById('practice-label');
+  if (labelEl) {
+    labelEl.textContent = currentMode === 'daily' ? 'Practice Puzzles' : 'Practice Mode';
+  }
+
   const select = document.getElementById('puzzle-select');
+  if (!select) return;
+
   select.innerHTML = '';
   const practice = getPracticePuzzles();
 
@@ -711,7 +757,7 @@ function populatePuzzleSelect() {
 
   practice.forEach((pz, idx) => {
     const opt = document.createElement('option');
-    opt.value = idx;
+    opt.value = String(idx);
     opt.textContent = `#${pz.id}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
     select.appendChild(opt);
   });
@@ -725,18 +771,48 @@ function populatePuzzleSelect() {
 function switchPuzzle(idx) {
   const practice = getPracticePuzzles();
   if (idx < 0 || idx >= practice.length) return;
+
   currentPuzzleIndex = PUZZLES.findIndex(p => p.id === practice[idx].id);
+  if (currentPuzzleIndex < 0) return;
+
   puzzle = { ...practice[idx] };
-  currentMode = 'practice'; // M16C: manual selector means practice mode
+  currentMode = 'practice';
   selectedChallengePhrase = '';
+
   updatePuzzleHeader();
   resetGame(false);
   updateDailyStatus();
   firstMoveTracked = false;
   updateLiveTrail();
   saveGameState();
+
   populatePuzzleSelect();
-  // --- Analytics: puzzle_changed ---
+  populateDailySelect();
+
+  trackEvent('puzzle_changed', getAnalyticsPuzzleParams());
+}
+
+function switchDailyPuzzle(idx) {
+  const daily = getSortedDailyPuzzles();
+  if (idx < 0 || idx >= daily.length) return;
+
+  currentPuzzleIndex = PUZZLES.findIndex(p => p.id === daily[idx].id);
+  if (currentPuzzleIndex < 0) return;
+
+  puzzle = { ...daily[idx] };
+  currentMode = 'daily';
+  selectedChallengePhrase = '';
+
+  updatePuzzleHeader();
+  resetGame(false);
+  updateDailyStatus();
+  firstMoveTracked = false;
+  updateLiveTrail();
+  saveGameState();
+
+  populateDailySelect();
+  populatePuzzleSelect();
+
   trackEvent('puzzle_changed', getAnalyticsPuzzleParams());
 }
 
@@ -744,7 +820,6 @@ function nextPuzzle() {
   const practice = getPracticePuzzles();
   let idx = practice.findIndex(p => p.id === puzzle.id);
 
-  // If currently on a Daily puzzle, Next Puzzle enters Practice at #1.
   if (idx === -1) {
     idx = 0;
   } else {
@@ -796,6 +871,7 @@ function loadGameState() {
       }
       updatePuzzleHeader();
       populatePuzzleSelect();
+      populateDailySelect();
       renderBoard();
       updateLaserCount();
       updateToggleCount();
@@ -1101,6 +1177,13 @@ function initGame() {
     if (e.target.value === '') return;
     switchPuzzle(Number(e.target.value));
   });
+  const dailySelect = document.getElementById('daily-select');
+  if (dailySelect) {
+    dailySelect.addEventListener('change', e => {
+      if (e.target.value === '') return;
+      switchDailyPuzzle(Number(e.target.value));
+    });
+  }
   document.getElementById('next-puzzle-btn').addEventListener('click', nextPuzzle);
 
   document.getElementById('reset-btn').addEventListener('click', () => {
@@ -1128,6 +1211,7 @@ function initGame() {
     puzzle = { ...PUZZLES[currentPuzzleIndex] };
     updatePuzzleHeader();
     populatePuzzleSelect();
+    populateDailySelect();
     resetGame(false);
     updateDailyStatus();
   }

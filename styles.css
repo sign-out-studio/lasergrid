@@ -1344,3 +1344,40 @@ body.win-flash::before {
     min-height: 42px;
   }
 }
+
+/* --- M16M: Daily Archive Selector --- */
+.daily-archive-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2px;
+  margin-top: 2px;
+  width: 100%;
+}
+#daily-archive-label {
+  font-size: 0.98rem;
+  color: var(--color-muted);
+  font-weight: 500;
+  margin-bottom: 2px;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+#daily-select {
+  width: 100%;
+  max-width: 260px;
+  margin-bottom: 2px;
+}
+@media (max-width: 600px) {
+  .daily-archive-controls {
+    margin-bottom: 1px;
+    margin-top: 1px;
+  }
+  #daily-archive-label {
+    font-size: 0.95rem;
+    margin-bottom: 1px;
+  }
+  #daily-select {
+    max-width: 98vw;
+    font-size: 0.97rem;
+  }
+}
