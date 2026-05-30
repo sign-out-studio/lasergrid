@@ -622,6 +622,13 @@ function renderBoard() {
 }
 // --- Puzzle Selection (M8) ---
 function populatePuzzleSelect() {
+    // M16G: Practice/Archive label logic
+    const labelEl = document.getElementById('practice-label');
+    if (currentMode === 'daily') {
+      labelEl.textContent = 'Practice Puzzles';
+    } else {
+      labelEl.textContent = 'Practice Mode';
+    }
   const select = document.getElementById('puzzle-select');
   select.innerHTML = '';
   const practice = getPracticePuzzles();
@@ -668,7 +675,14 @@ function switchPuzzle(idx) {
 function nextPuzzle() {
   const practice = getPracticePuzzles();
   let idx = practice.findIndex(p => p.id === puzzle.id);
-  idx = (idx + 1) % practice.length;
+
+  // If currently on a Daily puzzle, Next Puzzle enters Practice at #1.
+  if (idx === -1) {
+    idx = 0;
+  } else {
+    idx = (idx + 1) % practice.length;
+  }
+
   switchPuzzle(idx);
 }
 // --- Local Storage Save/Restore (M9) ---
