@@ -48,6 +48,8 @@ function saveDailyCompletion(result) {
   };
   saveDailyCompletions(completions);
   updateDailyStatus();
+  // M16N: Refresh Daily Archive dropdown so solved mark appears immediately
+  if (typeof populateDailySelect === 'function') populateDailySelect();
 }
 // LaserGrid Game Logic (M0–M3)
 // Only HTML, CSS, Vanilla JS. No frameworks.
@@ -711,6 +713,7 @@ function populateDailySelect() {
   select.innerHTML = '';
 
   const daily = getSortedDailyPuzzles();
+  const completions = loadDailyCompletions();
 
   if (currentMode === 'practice') {
     const placeholder = document.createElement('option');
@@ -722,9 +725,17 @@ function populateDailySelect() {
   }
 
   daily.forEach((pz, idx) => {
+    const solved = !!(pz.releaseDate && completions[pz.releaseDate]);
     const opt = document.createElement('option');
     opt.value = String(idx);
-    opt.textContent = `Daily #${pz.dailyNumber}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
+    opt.textContent =
+      (solved ? '✓ ' : '') + `Daily #${pz.dailyNumber}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
+    if (solved) {
+      const completion = completions[pz.releaseDate];
+      if (completion && completion.rank && completion.toggles && completion.time) {
+        opt.title = `Solved · ${completion.rank} · ${completion.toggles} toggles · ${completion.time}`;
+      }
+    }
     select.appendChild(opt);
   });
 
