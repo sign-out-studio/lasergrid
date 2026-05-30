@@ -1113,14 +1113,21 @@ function createVictoryImageCanvas() {
   // Decorative mini grid (non-spoiler)
   drawResultMiniGrid(ctx, centerX - 72, cardY + 182, 144);
 
-  // Puzzle summary
+  // Puzzle summary (M16H: Daily/Practice identity)
   ctx.save();
   ctx.textAlign = 'center';
   ctx.font = 'bold 28px Arial, sans-serif';
   ctx.fillStyle = '#9ff2ff';
   ctx.shadowColor = 'rgba(126,234,255,0.45)';
   ctx.shadowBlur = 8;
-  drawWrappedText(ctx, `Puzzle #${result.puzzleId} · ${result.puzzleTitle} · ${result.difficulty} · ${result.gridSize}`, centerX, cardY + 388, cardW - 180, 32, 'center', 2);
+  // Use Daily #N for daily, Puzzle #N for practice
+  let summaryLine;
+  if (result.isDaily && result.dailyNumber) {
+    summaryLine = `Daily #${result.dailyNumber} · ${result.puzzleTitle} · ${result.difficulty} · ${result.gridSize}`;
+  } else {
+    summaryLine = `Puzzle #${result.puzzleId} · ${result.puzzleTitle} · ${result.difficulty} · ${result.gridSize}`;
+  }
+  drawWrappedText(ctx, summaryLine, centerX, cardY + 388, cardW - 180, 32, 'center', 2);
   ctx.restore();
 
   // Stats row
