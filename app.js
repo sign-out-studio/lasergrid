@@ -213,6 +213,55 @@ const PUZZLES = [
       { row: 3, col: 1, value: 2 },
     ],
   },
+    // --- M16E: First Daily Puzzles ---
+    {
+      id: 101,
+      title: 'Laser Entry',
+      gridSize: 4,
+      requiredLasers: 2,
+      difficulty: 'Easy',
+      pack: 'daily',
+      mode: 'daily',
+      dailyNumber: 1,
+      releaseDate: '2026-05-30',
+      cores: [
+        { row: 0, col: 1, value: 2 },
+        { row: 2, col: 2, value: 1 }
+      ]
+    },
+    {
+      id: 102,
+      title: 'Crossed Paths',
+      gridSize: 4,
+      requiredLasers: 3,
+      difficulty: 'Medium',
+      pack: 'daily',
+      mode: 'daily',
+      dailyNumber: 2,
+      releaseDate: '2026-05-31',
+      cores: [
+        { row: 0, col: 2, value: 2 },
+        { row: 1, col: 1, value: 2 },
+        { row: 3, col: 0, value: 1 }
+      ]
+    },
+    {
+      id: 103,
+      title: 'Hard Target',
+      gridSize: 4,
+      requiredLasers: 4,
+      difficulty: 'Hard',
+      pack: 'daily',
+      mode: 'daily',
+      dailyNumber: 3,
+      releaseDate: '2026-06-01',
+      cores: [
+        { row: 0, col: 0, value: 2 },
+        { row: 1, col: 3, value: 2 },
+        { row: 2, col: 1, value: 2 },
+        { row: 3, col: 2, value: 2 }
+      ]
+    },
 ];
 
 // --- M16B: Daily Puzzle Helpers ---
@@ -563,19 +612,22 @@ function renderBoard() {
 function populatePuzzleSelect() {
   const select = document.getElementById('puzzle-select');
   select.innerHTML = '';
-  PUZZLES.forEach((pz, idx) => {
-    const opt = document.createElement('option');
-    opt.value = idx;
-    opt.textContent = `#${pz.id}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
-    select.appendChild(opt);
-  });
-  select.value = currentPuzzleIndex;
+    const practice = getPracticePuzzles();
+    practice.forEach((pz, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = `#${pz.id}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
+      select.appendChild(opt);
+    });
+    // Set selector to current practice puzzle if in practice mode, else default to 0
+    select.value = currentMode === 'practice' ? practice.findIndex(p => p.id === puzzle.id) : 0;
 }
 
 function switchPuzzle(idx) {
-  if (idx < 0 || idx >= PUZZLES.length) return;
-  currentPuzzleIndex = idx;
-  puzzle = { ...PUZZLES[currentPuzzleIndex] };
+  const practice = getPracticePuzzles();
+  if (idx < 0 || idx >= practice.length) return;
+  currentPuzzleIndex = PUZZLES.findIndex(p => p.id === practice[idx].id);
+  puzzle = { ...practice[idx] };
   currentMode = 'practice'; // M16C: manual selector means practice mode
   selectedChallengePhrase = '';
   updatePuzzleHeader();
@@ -589,7 +641,9 @@ function switchPuzzle(idx) {
 }
 
 function nextPuzzle() {
-  let idx = (currentPuzzleIndex + 1) % PUZZLES.length;
+  const practice = getPracticePuzzles();
+  let idx = practice.findIndex(p => p.id === puzzle.id);
+  idx = (idx + 1) % practice.length;
   switchPuzzle(idx);
 }
 // --- Local Storage Save/Restore (M9) ---
