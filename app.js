@@ -696,24 +696,14 @@ function renderBoard() {
     }
   }
 }
-// --- Puzzle Selection (M8 / M16M) ---
-
-function getSortedDailyPuzzles() {
-  return getDailyPuzzles().slice().sort((a, b) => {
-    if ((a.dailyNumber || 0) !== (b.dailyNumber || 0)) {
-      return (a.dailyNumber || 0) - (b.dailyNumber || 0);
-    }
-    return String(a.releaseDate || '').localeCompare(String(b.releaseDate || ''));
-  });
-}
-
+// --- Daily/Practice Selector Helpers (Consolidated) ---
 function populateDailySelect() {
   const select = document.getElementById('daily-select');
   if (!select) return;
 
   select.innerHTML = '';
 
-  const daily = getSortedDailyPuzzles();
+  const daily = getReleasedDailyPuzzles();
   const completions = loadDailyCompletions();
 
   if (currentMode === 'practice') {
@@ -805,7 +795,7 @@ function switchPuzzle(idx) {
 }
 
 function switchDailyPuzzle(idx) {
-  const daily = getSortedDailyPuzzles();
+  const daily = getReleasedDailyPuzzles();
   if (idx < 0 || idx >= daily.length) return;
 
   currentPuzzleIndex = PUZZLES.findIndex(p => p.id === daily[idx].id);
