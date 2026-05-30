@@ -1,3 +1,53 @@
+// --- M16I: Daily Completion Tracking ---
+const DAILY_COMPLETION_KEY = 'lasergrid_daily_completion_v1';
+
+function loadDailyCompletions() {
+  try {
+    const raw = localStorage.getItem(DAILY_COMPLETION_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || !parsed) return {};
+    return parsed;
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveDailyCompletions(completions) {
+  try {
+    localStorage.setItem(DAILY_COMPLETION_KEY, JSON.stringify(completions));
+  } catch (e) {}
+}
+
+function getDailyCompletionKey(resultOrPuzzle) {
+  // Use releaseDate if available, else today's date
+  if (resultOrPuzzle && resultOrPuzzle.releaseDate) return resultOrPuzzle.releaseDate;
+  // fallback: today's local date
+  return getTodayDateKey();
+}
+
+function getDailyCompletionForPuzzle(pz = puzzle) {
+  if (!pz || pz.mode !== 'daily' || !pz.releaseDate) return null;
+  const completions = loadDailyCompletions();
+  return completions[pz.releaseDate] || null;
+}
+
+function saveDailyCompletion(result) {
+  if (!result || !result.isDaily || !result.releaseDate) return;
+  const completions = loadDailyCompletions();
+  completions[result.releaseDate] = {
+    puzzleId: result.puzzleId,
+    dailyNumber: result.dailyNumber,
+    title: result.puzzleTitle,
+    difficulty: result.difficulty,
+    solvedAt: new Date().toISOString(),
+    toggles: result.toggles,
+    timeSeconds: typeof timer === 'number' ? timer : null,
+    time: result.time,
+    rank: result.rank
+  };
+  saveDailyCompletions(completions);
+}
 // LaserGrid Game Logic (M0–M3)
 // Only HTML, CSS, Vanilla JS. No frameworks.
 
@@ -575,7 +625,13 @@ function updatePuzzleHeader() {
   } else {
     subtitle = `${difficulty} · ${laserText}`;
   }
-  titleEl.innerHTML = `${escapeHtml(puzzle.title)}<br><span style="font-size:0.78em;color:#9df4ff;opacity:0.95;">${escapeHtml(subtitle)}</span>`;
+  // M16I: Show 'Solved today' if daily completion exists
+  let solvedLabel = '';
+  const dailyCompletion = getDailyCompletionForPuzzle(puzzle);
+  if (isDailyMode() && dailyCompletion) {
+    solvedLabel = `<span style="display:inline-block;margin-left:8px;padding:2px 8px;font-size:0.82em;background:#1a2a2f;color:#7eeaff;border-radius:8px;vertical-align:middle;opacity:0.92;">Solved today</span>`;
+  }
+  titleEl.innerHTML = `${escapeHtml(puzzle.title)}${solvedLabel}<br><span style="font-size:0.78em;color:#9df4ff;opacity:0.95;">${escapeHtml(subtitle)}</span>`;
 }
 
 // --- Rendering (M1–M3) ---
@@ -780,34 +836,48 @@ function formatTime(secs) {
 // --- Win Condition & Modal ---
 function checkWin() {
   if (win) return;
+
   if (isSolved()) {
     win = true;
     celebratingWin = true;
     stopTimer();
-    // Ensure final move is marked as winning move (replace last emoji)
+
+    // Ensure final move is marked as winning move.
     if (emojiTimeline.length > 0) {
       emojiTimeline[emojiTimeline.length - 1] = '🏆';
       updateLiveTrail();
     }
+
     renderBoard();
     updateLaserCount();
     updateToggleCount();
     updateTimer();
+
+    const result = getResultData();
+
+    // M16I: Save daily completion only for daily puzzles.
+    saveDailyCompletion(result);
+
+    // Refresh header so "Solved today" can appear after completion is saved.
+    updatePuzzleHeader();
+
     // --- Analytics: puzzle_solved ---
-    const rank = getRank();
     trackEvent('puzzle_solved', {
       ...getAnalyticsPuzzleParams(),
       toggles,
       time_seconds: timer,
-      rank
+      rank: result.rank
     });
+
     showCelebration();
+
     setTimeout(() => {
       celebratingWin = false;
       hideCelebration();
       showVictoryModal();
       saveGameState();
     }, 3000);
+
     return;
   }
 }
