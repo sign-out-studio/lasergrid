@@ -342,11 +342,16 @@ function getResultFilename(result) {
   }
   return `lasergrid-result-puzzle-${result.puzzleId}.png`;
 }
-// These helpers prepare for future Daily Puzzle mode.
+// --- M16O: Robust local date key helper ---
 function getTodayDateKey(date = new Date()) {
-  // return local date as YYYY-MM-DD
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  return d.toISOString().slice(0, 10);
+  if (typeof date === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    date = new Date(date);
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function getDailyPuzzles() {
@@ -361,29 +366,25 @@ function getPracticePuzzles() {
 
 function getDailyPuzzleForDate(date = new Date()) {
   // Use local browser date.
-  // Find exact releaseDate match among daily puzzles.
-  // If no exact match, return latest available daily puzzle with releaseDate <= today.
-  // If there are no daily puzzles at all, return null.
+  // Find exact releaseDate match among released daily puzzles.
+  // If no exact match, return latest available released daily puzzle.
+  // If there are no released daily puzzles at all, return null.
   const key = getTodayDateKey(date);
-  const daily = getDailyPuzzles();
-  if (daily.length === 0) return null;
-  const exact = daily.find(p => p.releaseDate === key);
+  const released = getReleasedDailyPuzzles(date);
+  if (released.length === 0) return null;
+  const exact = released.find(p => p.releaseDate === key);
   if (exact) return exact;
   return getLatestAvailableDailyPuzzle(date);
 }
 
 function getLatestAvailableDailyPuzzle(date = new Date()) {
   // Helper used by getDailyPuzzleForDate.
-  // Return latest daily puzzle with releaseDate <= date key.
+  // Return latest released daily puzzle with releaseDate <= date key.
   // If none, return null.
-  const key = getTodayDateKey(date);
-  const daily = getDailyPuzzles();
-  if (daily.length === 0) return null;
-  // Only consider those with releaseDate <= key
-  const available = daily.filter(p => p.releaseDate && p.releaseDate <= key);
-  if (available.length === 0) return null;
+  const released = getReleasedDailyPuzzles(date);
+  if (released.length === 0) return null;
   // Return the one with the latest releaseDate
-  return available.reduce((latest, p) => {
+  return released.reduce((latest, p) => {
     return (!latest || p.releaseDate > latest.releaseDate) ? p : latest;
   }, null);
 }
@@ -1808,4 +1809,100 @@ function getDailyStats(date = new Date()) {
     hasSolvedToday: hasSolvedToday(date),
     lastSolvedDate: getLastSolvedDailyDate()
   };
+}
+
+function isDailyPuzzleReleased(pz, date = new Date()) {
+  if (!pz || pz.mode !== 'daily' || !pz.releaseDate) return false;
+  return pz.releaseDate <= getTodayDateKey(date);
+}
+
+function getReleasedDailyPuzzles(date = new Date()) {
+  return getDailyPuzzles()
+    .filter(pz => isDailyPuzzleReleased(pz, date))
+    .sort((a, b) => {
+      if ((a.dailyNumber || 0) !== (b.dailyNumber || 0)) {
+        return (a.dailyNumber || 0) - (b.dailyNumber || 0);
+      }
+      return String(a.releaseDate || '').localeCompare(String(b.releaseDate || ''));
+    });
+}
+
+function getLatestAvailableDailyPuzzle(date = new Date()) {
+  const released = getReleasedDailyPuzzles(date);
+  if (released.length === 0) return null;
+  return released.reduce((latest, p) => {
+    return (!latest || p.releaseDate > latest.releaseDate) ? p : latest;
+  }, null);
+}
+
+function getDailyPuzzleForDate(date = new Date()) {
+  const key = getTodayDateKey(date);
+  const released = getReleasedDailyPuzzles(date);
+  if (released.length === 0) return null;
+  const exact = released.find(p => p.releaseDate === key);
+  if (exact) return exact;
+  return getLatestAvailableDailyPuzzle(date);
+}
+
+function populateDailySelect() {
+  const select = document.getElementById('daily-select');
+  if (!select) return;
+
+  select.innerHTML = '';
+
+  const daily = getReleasedDailyPuzzles();
+  const completions = loadDailyCompletions();
+
+  if (currentMode === 'practice') {
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Daily Archive';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    select.appendChild(placeholder);
+  }
+
+  daily.forEach((pz, idx) => {
+    const solved = !!(pz.releaseDate && completions[pz.releaseDate]);
+    const opt = document.createElement('option');
+    opt.value = String(idx);
+    opt.textContent =
+      (solved ? '✓ ' : '') + `Daily #${pz.dailyNumber}: ${pz.title}${pz.difficulty ? ' · ' + pz.difficulty : ''}`;
+    if (solved) {
+      const completion = completions[pz.releaseDate];
+      if (completion && completion.rank && completion.toggles && completion.time) {
+        opt.title = `Solved · ${completion.rank} · ${completion.toggles} toggles · ${completion.time}`;
+      }
+    }
+    select.appendChild(opt);
+  });
+
+  if (currentMode === 'daily') {
+    const selectedDailyIndex = daily.findIndex(p => p.id === puzzle.id);
+    select.value = String(selectedDailyIndex >= 0 ? selectedDailyIndex : 0);
+  }
+}
+
+function switchDailyPuzzle(idx) {
+  const daily = getReleasedDailyPuzzles();
+  if (idx < 0 || idx >= daily.length) return;
+
+  currentPuzzleIndex = PUZZLES.findIndex(p => p.id === daily[idx].id);
+  if (currentPuzzleIndex < 0) return;
+
+  puzzle = { ...daily[idx] };
+  currentMode = 'daily';
+  selectedChallengePhrase = '';
+
+  updatePuzzleHeader();
+  resetGame(false);
+  updateDailyStatus();
+  firstMoveTracked = false;
+  updateLiveTrail();
+  saveGameState();
+
+  populateDailySelect();
+  populatePuzzleSelect();
+
+  trackEvent('puzzle_changed', getAnalyticsPuzzleParams());
 }
