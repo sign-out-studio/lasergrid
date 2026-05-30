@@ -1655,3 +1655,62 @@ function hideCelebration() {
     overlay.setAttribute('aria-hidden', 'true');
   }
 }
+
+// --- M16K: Daily Streak Foundation ---
+function getSortedCompletedDailyDates() {
+  const completions = loadDailyCompletions();
+  return Object.keys(completions)
+    .filter(key => /^\d{4}-\d{2}-\d{2}$/.test(key))
+    .sort();
+}
+
+function hasSolvedDailyDate(dateKey) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
+  const completions = loadDailyCompletions();
+  return !!completions[dateKey];
+}
+
+function hasSolvedToday(date = new Date()) {
+  const todayKey = getTodayDateKey(date);
+  return hasSolvedDailyDate(todayKey);
+}
+
+function getCompletedDailyCount() {
+  return getSortedCompletedDailyDates().length;
+}
+
+function getLastSolvedDailyDate() {
+  const dates = getSortedCompletedDailyDates();
+  return dates.length ? dates[dates.length - 1] : null;
+}
+
+function addDaysToDateKey(dateKey, days) {
+  // dateKey: 'YYYY-MM-DD', days: integer
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + days);
+  return getTodayDateKey(date);
+}
+
+function getDailyStreak(date = new Date()) {
+  // Returns current consecutive streak ending at date
+  let streak = 0;
+  let currentKey = getTodayDateKey(date);
+  const completions = loadDailyCompletions();
+  // If today is not solved, streak is 0
+  if (!hasSolvedDailyDate(currentKey)) return 0;
+  while (hasSolvedDailyDate(currentKey)) {
+    streak++;
+    currentKey = addDaysToDateKey(currentKey, -1);
+  }
+  return streak;
+}
+
+function getDailyStats(date = new Date()) {
+  return {
+    completedCount: getCompletedDailyCount(),
+    currentStreak: getDailyStreak(date),
+    hasSolvedToday: hasSolvedToday(date),
+    lastSolvedDate: getLastSolvedDailyDate()
+  };
+}
